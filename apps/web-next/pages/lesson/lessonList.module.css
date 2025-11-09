@@ -36,6 +36,34 @@
   gap: 16px;
 }
 
+.lockedCard {
+  opacity: 0.75;
+  position: relative;
+  border: 1px dashed rgba(71, 85, 105, 0.4);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.lockedBadge {
+  font-size: 12px;
+  color: rgba(71, 85, 105, 0.9);
+  background: rgba(226, 232, 240, 0.9);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.lockedOverlay {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .cardTop {
   display: flex;
   align-items: center;

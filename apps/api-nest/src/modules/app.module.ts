@@ -20,11 +20,12 @@ import { PracticeService } from '../services/practice.service';
 import { AppSettingService } from '../services/app-setting.service';
 import { LessonAudioService } from '../services/lesson-audio.service';
 import { AuthMiddleware } from '../middleware/auth.middleware';
+import { AdminGuard } from '../guards/admin.guard';
 
 @Module({
   imports: [],
   controllers: [LessonsController, VocabController, ReviewsController, ProgressController, PodcastController, PracticeController, AuthController, SubscriptionController, AdminController, UploadController, TTSController, ModelConfigController, MediaController],
-  providers: [PrismaService, AuthService, LessonService, ProgressService, PracticeService, AppSettingService, LessonAudioService],
+  providers: [PrismaService, AuthService, LessonService, ProgressService, PracticeService, AppSettingService, LessonAudioService, AdminGuard],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

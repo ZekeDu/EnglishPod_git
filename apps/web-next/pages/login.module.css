@@ -143,6 +143,13 @@
   color: #ef4444;
 }
 
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
 @media (min-width: 960px) {
   .container {
     grid-template-columns: 1.1fr 0.9fr;

@@ -46,6 +46,11 @@ export default function PracticePage() {
     if (!id) return;
     (async () => {
       const resp = await fetch(`${API}/practice/lessons/${id}`, { credentials: 'include' });
+      if (resp.status === 401) {
+        router.push(`/login?redirect=/practice/${id}`);
+        return;
+      }
+      if (!resp.ok) throw new Error('failed');
       const json = await resp.json();
       setCloze(json.data.cloze || null);
       setEssay(json.data.essay || null);
@@ -62,6 +67,10 @@ export default function PracticePage() {
     (async () => {
       try {
         const resp = await fetch(`${API}/practice/${id}/state`, { credentials: 'include' });
+        if (resp.status === 401) {
+          router.push(`/login?redirect=/practice/${id}`);
+          return;
+        }
         if (!resp.ok) return;
         const json = await resp.json();
         if (json?.data) applyLatestState(json.data);
@@ -138,10 +147,11 @@ export default function PracticePage() {
     let text = cloze.passage;
     (cloze.items || []).forEach((item) => {
       const selected = answers[item.index] || '';
+      const placeholder = `<option value="" disabled ${selected ? '' : 'selected'}>请选择</option>`;
       const options = item.options
         .map((opt) => `<option value="${opt}" ${opt === selected ? 'selected' : ''}>${opt}</option>`)
         .join('');
-      const selectHtml = `<select data-idx="${item.index}" class="cloze-select">${options}</select>`;
+      const selectHtml = `<select data-idx="${item.index}" class="cloze-select">${selected ? '' : placeholder}${options}</select>`;
       text = text.replace(new RegExp(`\\{${item.index}\\}`, 'g'), selectHtml);
     });
     return text;
@@ -167,7 +177,11 @@ export default function PracticePage() {
       if (!resp.ok || !result || result.code !== 200) {
         const message = result?.data?.error || '提交失败，请稍后再试';
         if (resp.status === 401 || message === 'unauthorized') {
-          router.push(`/login?redirect=/practice/${id}`);
+          setClozeError('请登录后再提交完形填空。');
+          if (typeof window !== 'undefined') {
+            window.alert('请先注册或登录，再提交完形填空。');
+          }
+          await router.push(`/login?mode=signup&redirect=/practice/${id}`);
           return;
         }
         setClozeError(message);
@@ -198,21 +212,26 @@ export default function PracticePage() {
         credentials: 'include',
         body: JSON.stringify({ content: essayText }),
       });
-      if (!resp.ok) {
-        const result = await resp.json().catch(() => ({}));
+      const result = await resp.json().catch(() => null);
+      const serverCode = result?.code ?? (resp.ok ? 200 : resp.status);
+      if (!resp.ok || serverCode !== 200) {
         const message = result?.data?.error || '当前作文反馈暂不可用，请稍后再试';
-        if (resp.status === 401 || message === 'unauthorized') {
-          router.push(`/login?redirect=/practice/${id}`);
+        if (serverCode === 401 || message === 'unauthorized') {
+          setEssayError('请注册或登录后提交作文。');
+          if (typeof window !== 'undefined') {
+            window.alert('请先注册或登录，再提交作文。');
+          }
+          router.push(`/login?mode=signup&redirect=/practice/${id}`);
           return;
         }
         setEssayError(message);
         setEssayResult(null);
         return;
       }
-      const res = await resp.json();
-      setEssayResult(res.data);
-      if (res.data?.submitted_at) {
-        const next = latestTimestamp([res.data.submitted_at, lastSubmittedAt]);
+      const resData = result?.data;
+      setEssayResult(resData);
+      if (resData?.submitted_at) {
+        const next = latestTimestamp([resData.submitted_at, lastSubmittedAt]);
         setLastSubmittedAt(next);
       }
     } catch {

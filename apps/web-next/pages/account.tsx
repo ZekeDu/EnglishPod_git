@@ -179,14 +179,6 @@ export default function AccountPage() {
         {message && <span className={styles.infoLabel}>{message}</span>}
       </Card>
 
-      <div className={styles.logout}>
-        <Button variant="ghost" size="sm" onClick={async () => {
-          await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
-          window.location.href = '/login';
-        }}>
-          退出登录
-        </Button>
-      </div>
       <Card className={styles.offlineCard}>
         <h3 className={styles.sectionTitle}>离线缓存</h3>
         <p className={styles.subtitle}>缓存课程音频，离线也能继续学习。</p>
@@ -213,6 +205,14 @@ export default function AccountPage() {
           ))}
         </div>
       </section>
+      <div className={styles.logout}>
+        <Button variant="ghost" size="sm" onClick={async () => {
+          await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
+          window.location.href = '/login';
+        }}>
+          退出登录
+        </Button>
+      </div>
     </div>
   );
 }

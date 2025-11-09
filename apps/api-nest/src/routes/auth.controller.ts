@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { PrismaService } from '../services/prisma.service';
-import { getUserFromRequest, hashPassword, verifyPassword } from '../utils/auth';
+import { getUserFromRequest, hashPassword, verifyPassword, validatePasswordStrength } from '../utils/auth';
 
 function pickUsername(body: any) {
   const username = String(body?.username ?? '').trim();
@@ -30,6 +30,13 @@ export class AuthController {
     const password = String(body?.password ?? '');
     if (!rawUsername || !password) {
       return res.status(400).json({ code: 400, message: 'error', data: { error: 'username/password required' } });
+    }
+    if (!this.authService.enforceSignupRateLimit(req.ip)) {
+      return res.status(429).json({ code: 429, message: 'error', data: { error: 'too_many_requests' } });
+    }
+    const passwordIssue = validatePasswordStrength(password);
+    if (passwordIssue) {
+      return res.status(400).json({ code: 400, message: 'error', data: { error: passwordIssue } });
     }
     const username = this.authService.normalizeUsername(rawUsername);
     const email = pickEmail(body);
@@ -59,6 +66,9 @@ export class AuthController {
     const captchaAnswer = String(body?.captchaAnswer ?? body?.captcha ?? '').trim();
     if (!rawUsername || !password) {
       return res.status(400).json({ code: 400, message: 'error', data: { error: 'username/password required' } });
+    }
+    if (!this.authService.enforceLoginRateLimit(req.ip, rawUsername)) {
+      return res.status(429).json({ code: 429, message: 'error', data: { error: 'too_many_requests' } });
     }
     const username = this.authService.normalizeUsername(rawUsername);
     const requireCaptcha = await this.authService.shouldRequireCaptcha(username, req.ip);

@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LessonAudioService } from '../services/lesson-audio.service';
 import { DATA_DIR } from '../utils/data';
+import { AuthService } from '../services/auth.service';
+import { FREE_LESSON_IDS } from './lessons.controller';
 
 function streamLocal(req: Request, res: Response, relKey: string) {
   const safe = String(relKey || '').replace(/\.+/g, '.');
@@ -54,9 +56,17 @@ function streamLocal(req: Request, res: Response, relKey: string) {
 
 @Controller('media/lesson/:id')
 export class MediaController {
-  constructor(private readonly audioService: LessonAudioService) {}
+  constructor(private readonly audioService: LessonAudioService, private readonly auth: AuthService) {}
 
   private async handle(kind: 'main' | 'podcast', id: string, req: Request, res: Response) {
+    try {
+      await this.auth.attachUserToRequest(req);
+    } catch {}
+    const isAuthed = !!this.auth.getUserFromRequest(req);
+    const normalizedId = String(id || '').padStart(3, '0');
+    if (!isAuthed && !FREE_LESSON_IDS.has(normalizedId)) {
+      return res.status(401).json({ code: 401, message: 'error', data: { error: 'login required' } });
+    }
     const audio = await this.audioService.getAudio(id, kind);
     if (!audio?.url) {
       return res.status(404).json({ code: 404, message: 'error', data: { error: 'audio not found' } });

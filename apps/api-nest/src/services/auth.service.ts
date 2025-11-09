@@ -12,6 +12,9 @@ const LOGIN_MAX_FAILURES = Number(process.env.AUTH_LOGIN_MAX_FAILURES || 5);
 const CAPTCHA_TTL_MS = Number(process.env.AUTH_CAPTCHA_TTL_MS || 2 * 60 * 1000);
 const CAPTCHA_LENGTH = Math.max(4, Number(process.env.AUTH_CAPTCHA_LENGTH || 5));
 const CAPTCHA_MAX_ATTEMPTS = Number(process.env.AUTH_CAPTCHA_MAX_ATTEMPTS || 3);
+const RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+const RATE_LIMIT_LOGIN_MAX = Number(process.env.AUTH_RATE_LIMIT_LOGIN_MAX || 30);
+const RATE_LIMIT_SIGNUP_MAX = Number(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX || 10);
 
 export interface SessionMetadata {
   ip?: string | null;
@@ -22,6 +25,8 @@ type SessionWithUser = UserSession & { user: User };
 
 @Injectable()
 export class AuthService {
+  private rateLimitBuckets = new Map<string, { count: number; reset: number }>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   normalizeUsername(input: string) {
@@ -143,6 +148,32 @@ export class AuthService {
       sameSite: 'lax',
       secure,
     });
+  }
+
+  private consumeRateLimit(bucketKey: string, limit: number) {
+    if (!bucketKey) return true;
+    const now = Date.now();
+    const bucket = this.rateLimitBuckets.get(bucketKey);
+    if (!bucket || bucket.reset <= now) {
+      this.rateLimitBuckets.set(bucketKey, { count: 1, reset: now + RATE_LIMIT_WINDOW_MS });
+      return true;
+    }
+    if (bucket.count >= limit) return false;
+    bucket.count += 1;
+    return true;
+  }
+
+  enforceLoginRateLimit(ip: string | undefined | null, username?: string | null) {
+    const keyParts = ['login'];
+    if (ip) keyParts.push(`ip:${ip}`);
+    if (username) keyParts.push(`user:${this.normalizeUsername(username)}`);
+    const key = keyParts.join('|');
+    return this.consumeRateLimit(key, RATE_LIMIT_LOGIN_MAX);
+  }
+
+  enforceSignupRateLimit(ip: string | undefined | null) {
+    const key = `signup|ip:${ip || 'unknown'}`;
+    return this.consumeRateLimit(key, RATE_LIMIT_SIGNUP_MAX);
   }
 
   async recordLoginAttempt(params: { username?: string | null; success: boolean; ip?: string | null; userId?: string | null }) {

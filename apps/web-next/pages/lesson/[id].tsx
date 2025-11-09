@@ -43,7 +43,11 @@ export default function LessonDetail() {
     if (!id) return;
     (async () => {
       try {
-        const resp = await fetch(`${API}/lessons/${id}/aggregate?include=meta,transcript,vocab,practice,podcast`);
+        const resp = await fetch(`${API}/lessons/${id}/aggregate?include=meta,transcript,vocab,practice,podcast`, { credentials: 'include' });
+        if (resp.status === 401) {
+          router.push(`/login?redirect=/lesson/${id}`);
+          return;
+        }
         if (!resp.ok) throw new Error('failed');
         const json = await resp.json();
         const data = json.data || {};
@@ -266,17 +270,21 @@ export default function LessonDetail() {
               )}
             </div>
           </div>
-          <div className={styles.heroSummary}>
-            <h2 className={styles.sectionHeading}>课程概览</h2>
-            <p className={styles.muted}>{meta?.description || '暂无简介'}</p>
-            <div className={styles.tagRow}>
-              {(meta?.tags || []).map((tag: string) => (
-                <Badge key={tag} variant="muted">
-                  #{tag}
-                </Badge>
-              ))}
+          {((meta?.description && meta.description.trim()) || (meta?.tags || []).length > 0) && (
+            <div className={styles.heroSummary}>
+              <h2 className={styles.sectionHeading}>课程概览</h2>
+              {meta?.description && meta.description.trim() && <p className={styles.muted}>{meta.description.trim()}</p>}
+              {(meta?.tags || []).length > 0 && (
+                <div className={styles.tagRow}>
+                  {(meta?.tags || []).map((tag: string) => (
+                    <Badge key={tag} variant="muted">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </section>
 
         <nav className={styles.tabs} aria-label="课程内容导航">

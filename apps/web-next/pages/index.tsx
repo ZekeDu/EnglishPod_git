@@ -30,7 +30,9 @@ export default function Home() {
   const [summary, setSummary] = useState<PracticeSummary>(null);
   const [reviewStats, setReviewStats] = useState<ReviewStats>(null);
   const [profileName, setProfileName] = useState<string>('学习者');
-
+  const [isAuthed, setIsAuthed] = useState(false);
+  const defaultFreeIds = Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(3, '0'));
+  const [freeIds, setFreeIds] = useState<string[]>(defaultFreeIds);
   useEffect(() => {
     fetch(`${API}/me`, { credentials: 'include', cache: 'no-store' as RequestCache })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
@@ -48,20 +50,28 @@ export default function Home() {
         const r = await fetch(`${API}/lessons`, { credentials: 'include', cache: 'no-store' as RequestCache });
         if (r.ok) {
           const j = await r.json();
-          const list = Array.isArray(j) ? j : Array.isArray(j.data) ? j.data : [];
-          setLessons(list);
+          const data = Array.isArray(j) ? j : Array.isArray(j.data) ? j.data : [];
+          setLessons(data);
+          setIsAuthed(Boolean(j?.meta?.authenticated));
+          setFreeIds(Array.isArray(j?.meta?.freeLessonIds) ? j.meta.freeLessonIds : defaultFreeIds);
           return;
         }
         const fallback = await fetch(`${API}/lessons`, { cache: 'no-store' as RequestCache });
         if (fallback.ok) {
           const j2 = await fallback.json();
-          const list2 = Array.isArray(j2) ? j2 : Array.isArray(j2.data) ? j2.data : [];
-          setLessons(list2);
+          const data2 = Array.isArray(j2) ? j2 : Array.isArray(j2.data) ? j2.data : [];
+          setLessons(data2);
+          setIsAuthed(Boolean(j2?.meta?.authenticated));
+          setFreeIds(Array.isArray(j2?.meta?.freeLessonIds) ? j2.meta.freeLessonIds : defaultFreeIds);
           return;
         }
         setLessons([]);
+        setIsAuthed(false);
+        setFreeIds(defaultFreeIds);
       } catch {
         setLessons([]);
+        setIsAuthed(false);
+        setFreeIds(defaultFreeIds);
       }
     };
     loadLessons();
@@ -109,15 +119,26 @@ export default function Home() {
     return null;
   }, [lessons, summary]);
 
-  const continueHref = primaryLesson ? `/lesson/${primaryLesson.id}` : '/lesson/1';
+  const isLessonUnlocked = (id: string) => {
+    const normalized = String(id || '').padStart(3, '0');
+    return isAuthed || freeIds.includes(normalized);
+  };
+  const continueHrefEffective = primaryLesson && isLessonUnlocked(primaryLesson.id)
+    ? `/lesson/${primaryLesson.id}`
+    : primaryLesson
+    ? `/login?redirect=${encodeURIComponent(`/lesson/${primaryLesson.id}`)}`
+    : '/lesson/1';
   const continueDesc = primaryLesson
     ? primaryLesson.lessonNo
       ? `继续学习 Lesson ${primaryLesson.lessonNo}`
       : `继续学习 ${primaryLesson.title || primaryLesson.id}`
     : '挑选一节课程开始';
-  const continueCta = primaryLesson ? '继续学习' : '去选课';
+  const continueCta = primaryLesson ? (isLessonUnlocked(primaryLesson.id) ? '继续学习' : '注册后继续') : '去选课';
+  const continueHref = continueHrefEffective;
 
   const taskCards = useMemo(() => {
+    const reviewHref = isAuthed ? '/review' : `/login?redirect=${encodeURIComponent('/review')}`;
+    const reviewCta = isAuthed ? '开始复习' : '注册后复习';
     return [
       {
         title: '今日课程',
@@ -128,11 +149,11 @@ export default function Home() {
       {
         title: '复习任务',
         desc: reviewStats ? `到期 ${reviewStats.due} / 总计 ${reviewStats.total}` : '加载中…',
-        href: '/review',
-        cta: '开始复习',
+        href: reviewHref,
+        cta: reviewCta,
       },
     ];
-  }, [continueCta, continueDesc, continueHref, reviewStats]);
+  }, [continueCta, continueDesc, continueHref, reviewStats, isAuthed]);
 
   return (
     <div className={styles.page}>
@@ -190,11 +211,18 @@ export default function Home() {
           )}
           {lessons.slice(0, 9).map((lesson) => {
             const minutes = Math.max(1, Math.round(lesson.duration / 60));
+            const unlocked = isLessonUnlocked(lesson.id);
+            const locked = !unlocked;
             return (
-              <Card key={lesson.id} href={`/lesson/${lesson.id}`}>
+              <Card
+                key={lesson.id}
+                href={locked ? `/login?redirect=${encodeURIComponent(`/lesson/${lesson.id}`)}` : `/lesson/${lesson.id}`}
+                className={locked ? styles.lockedCard : undefined}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Badge variant="muted">#{lesson.lessonNo}</Badge>
                   {cachedMap[lesson.id] && <Badge variant="success">已缓存</Badge>}
+                  {locked && <div className={styles.lockedBadge}>注册解锁</div>}
                 </div>
                 <h3 className={styles.lessonTitle}>{lesson.title}</h3>
                 <div className={styles.tagRow}>
@@ -204,10 +232,17 @@ export default function Home() {
                     <Badge key={tag} variant="muted">#{tag}</Badge>
                   ))}
                 </div>
-                <div className={styles.cardFooter}>
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>点击查看详情</span>
-                  <Button as="a" href={`/lesson/${lesson.id}`} size="sm" variant="ghost">进入</Button>
-                </div>
+                {locked ? (
+                  <div className={styles.lockedOverlay}>
+                    <p>注册后可免费学习更多课程，并同步学习进度。</p>
+                    <Button as="a" href={`/login?redirect=${encodeURIComponent(`/lesson/${lesson.id}`)}`} size="sm">立即注册</Button>
+                  </div>
+                ) : (
+                  <div className={styles.cardFooter}>
+                    <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>点击查看详情</span>
+                    <Button as="a" href={`/lesson/${lesson.id}`} size="sm" variant="ghost">进入</Button>
+                  </div>
+                )}
               </Card>
             );
           })}

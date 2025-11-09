@@ -1,12 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DATA_DIR } from '../utils/data';
 import { LessonService } from '../services/lesson.service';
 import { Request, Response } from 'express';
-import { getUserFromRequest } from '../utils/auth';
 import { ensureTTSFile } from '../utils/tts';
 import { LessonAudioService } from '../services/lesson-audio.service';
+import { AdminGuard } from '../guards/admin.guard';
 
 function readJSON<T>(p: string, fb: T): T { try { return JSON.parse(fs.readFileSync(p, 'utf-8')) as T; } catch { return fb; } }
 function writeJSON(p: string, obj: any) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); }
@@ -55,18 +55,13 @@ function qcTranscript(segments: any[]): { warnings: string[]; errors: string[] }
 
 function ensureDir(p: string) { fs.mkdirSync(p, { recursive: true }); }
 
+@UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly lessons: LessonService, private readonly lessonAudio: LessonAudioService) {}
 
-  private isAdmin(req: Request) {
-    const u = getUserFromRequest(req);
-    return !!u && u.role === 'admin';
-  }
-
   @Get('lessons')
   async list(@Req() req: Request) {
-    if (!this.isAdmin(req)) { return { code: 403, message: 'error', data: { error: 'forbidden' } }; }
     const url = new URL(req.url || '/', 'http://x');
     const query = (url.searchParams.get('query') || '').trim().toLowerCase();
     const level = (url.searchParams.get('level') || '').trim().toLowerCase();
@@ -94,7 +89,6 @@ export class AdminController {
   // Provide a sample zip with lessons.json + audio placeholders
   @Get('import/sample.zip')
   async sampleZip(@Req() req: Request, @Res() res: Response) {
-    if (!this.isAdmin(req)) return res.status(403).json({ code:403, message:'error', data:{ error:'forbidden' } });
     // Dynamic import to avoid startup failure when dependency not installed
     let archiver: any;
     try { const m: any = await import('archiver'); archiver = m.default || m; } catch { return res.status(501).json({ code:501, message:'error', data:{ error:'archiver not installed' } }); }
@@ -124,7 +118,6 @@ export class AdminController {
 
   @Get('lessons/:id')
   async get(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) { return { code: 403, message: 'error', data: { error: 'forbidden' } }; }
     const lesson = await this.lessons.getLessonFull(id);
     if (!lesson.meta) return { code: 404, message: 'error', data: { error: 'not found' } };
     const metaRaw: any = lesson.meta;
@@ -193,14 +186,12 @@ export class AdminController {
 
   @Get('lessons/:id/versions')
   async versions(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) { return { code: 403, message: 'error', data: { error: 'forbidden' } }; }
     const list = await this.lessons.listHistory(id);
     return { code: 200, message: 'ok', data: { versions: list } };
   }
 
   @Get('lessons/:id/qc')
   async qc(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const t = await this.lessons.getLessonFull(id);
     if (!t?.transcript || !Array.isArray(t.transcript.segments)) {
       return { code: 404, message: 'error', data: { error: 'transcript not found' } };
@@ -211,7 +202,6 @@ export class AdminController {
 
   @Put('lessons/:id/meta')
   async updateMeta(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const exists = await this.lessons.getLessonMeta(id);
     if (exists) {
       await this.lessons.createHistory(id, 'update_meta').catch(() => {});
@@ -241,7 +231,6 @@ export class AdminController {
 
   @Put('lessons/:id/transcript')
   async updateTranscript(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     if (!Array.isArray(body?.segments)) return { code: 400, message: 'error', data: { error: 'segments must be array' } };
     await this.lessons.createHistory(id, 'update_transcript').catch(() => {});
     const qc = qcTranscript(body.segments);
@@ -251,7 +240,6 @@ export class AdminController {
 
   @Put('lessons/:id/vocab')
   async updateVocab(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const cards = body?.cards;
     if (!Array.isArray(cards)) {
       return { code: 400, message: 'error', data: { error: 'cards must be array' } };
@@ -281,7 +269,6 @@ export class AdminController {
 
   @Put('lessons/:id/practice')
   async updatePractice(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     if (body?.cloze) {
       const c = body.cloze;
       if (typeof c.passage !== 'string' || !Array.isArray(c.items)) {
@@ -310,7 +297,6 @@ export class AdminController {
   // Update podcast meta/transcript
   @Put('lessons/:id/podcast')
   async updatePodcast(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const dir = path.join(DATA_DIR, 'lessons', id);
     snapshotLesson(dir, 'update_podcast');
     const payload = {
@@ -339,7 +325,6 @@ export class AdminController {
   // Attach audio (main or podcast) after upload
   @Post('lessons/:id/audio/attach')
   async attachAudio(@Param('id') id: string, @Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const { type, url, duration } = body || {};
     if (!url || !type) return { code: 400, message: 'error', data: { error: 'type and url required' } };
     if (type !== 'main' && type !== 'podcast') {
@@ -354,7 +339,6 @@ export class AdminController {
 
   @Put('lessons/:id/publish')
   async publish(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const lesson = await this.lessons.getLessonFull(id);
     if (!lesson.meta) return { code: 404, message: 'error', data: { error: 'not found' } };
     if (lesson.transcript && Array.isArray(lesson.transcript.segments)) {
@@ -374,7 +358,6 @@ export class AdminController {
 
   @Put('lessons/:id/unpublish')
   async unpublish(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     await this.lessons.createHistory(id, 'unpublish').catch(() => {});
     await this.lessons.publishLesson(id, false);
     return { code: 200, message: 'ok', data: { published: false } };
@@ -386,7 +369,6 @@ export class AdminController {
     @Req() req: Request,
     @Query('purgeUploads') purgeUploads?: string,
   ) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const lesson = await this.lessons.getLessonFull(id);
     if (!lesson.meta) return { code: 404, message: 'error', data: { error: 'not found' } };
 
@@ -464,7 +446,6 @@ export class AdminController {
 
   @Post('lessons/:id/rollback')
   async rollback(@Param('id') id: string, @Req() req: Request, @Body() body: any) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const key = String(body?.version || body?.history_id || body?.id || body?.file || '').trim();
     if (!key) return { code: 400, message: 'error', data: { error: 'history id required' } };
     await this.lessons.restoreFromHistory(id, key);
@@ -472,47 +453,9 @@ export class AdminController {
     return { code: 200, message: 'ok', data: { rolledBack: true } };
   }
 
-  @Post('import/json')
-  async importJson(@Req() req: Request, @Body() body: any) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
-    const id = String(body?.id || '').trim();
-    if (!/^\d+$/.test(id)) return { code: 400, message: 'error', data: { error: 'invalid id' } };
-    const report: any = { id, created: [], updated: [], errors: [] };
-    try {
-      if (body?.meta) {
-        await this.lessons.upsertLessonMeta({ ...body.meta, id, lesson_no: Number(id) });
-        report.updated.push('meta');
-      }
-      if (body?.transcript) {
-        const t = body.transcript;
-        if (!Array.isArray(t?.segments)) report.errors.push('transcript.segments must be array');
-        else {
-          await this.lessons.saveTranscript(id, t);
-          report.updated.push('transcript');
-        }
-      }
-      if (body?.vocab) {
-        const v = body.vocab;
-        if (!Array.isArray(v?.cards)) report.errors.push('vocab.cards must be array');
-        else {
-          await this.lessons.saveVocab(id, v);
-          report.updated.push('vocab');
-        }
-      }
-      if (body?.practice) {
-        await this.lessons.savePractice(id, body.practice);
-        report.updated.push('practice');
-      }
-    } catch (e: any) {
-      report.errors.push(e.message || 'write failed');
-    }
-    return { code: 200, message: 'ok', data: report };
-  }
-
   // 批量预生成本课 TTS（词汇 + 字幕句子），固定音色/语速
   @Post('lessons/:id/tts/prefetch')
   async prefetchTTS(@Param('id') id: string, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const vocab = await this.lessons.getLessonFull(id);
     const vocabCards = Array.isArray(vocab?.vocab?.cards) ? (vocab?.vocab?.cards as any[]) : [];
     const set = new Set<string>();
@@ -541,7 +484,6 @@ export class AdminController {
   // Create a new lesson with empty templates
   @Post('lessons')
   async createLesson(@Body() body: any, @Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     try {
       const created = await this.lessons.createLesson({
         id: body?.id,
@@ -560,7 +502,6 @@ export class AdminController {
   // Import a ZIP: lessons.json + audio/* files
   @Post('import/zip')
   async importZip(@Req() req: Request) {
-    if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     try {
       // Dynamic import to avoid hard dependency at startup
       let unzipper: any;

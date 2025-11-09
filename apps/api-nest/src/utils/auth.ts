@@ -24,3 +24,15 @@ export function parseCookies(req: IncomingMessage): Record<string, string> {
 export function getUserFromRequest(req: IncomingMessage) {
   return (req as any).__user || null;
 }
+
+export function validatePasswordStrength(password: string): string | null {
+  const val = String(password || '');
+  if (val.length < 8) return '密码长度至少 8 位';
+  const hasLower = /[a-z]/.test(val);
+  const hasUpper = /[A-Z]/.test(val);
+  const hasDigit = /\d/.test(val);
+  if (!(hasLower && hasUpper && hasDigit)) {
+    return '密码需同时包含大小写字母与数字';
+  }
+  return null;
+}

@@ -1,39 +1,61 @@
-import { Body, Controller, Get, Param, Put, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query, Req, Res } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { LessonAudioService } from '../services/lesson-audio.service';
 import { LessonService } from '../services/lesson.service';
 import { DATA_DIR } from '../utils/data';
+import { AuthService } from '../services/auth.service';
+
+export const FREE_LESSON_IDS = new Set(
+  Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(3, '0')),
+);
 
 @Controller('lessons')
 export class LessonsController {
   constructor(
     private readonly lessons: LessonService,
     private readonly lessonAudio: LessonAudioService,
+    private readonly auth: AuthService,
   ) {}
   @Get()
-  list(@Res() res: Response, @Query('query') query?: string, @Query('level') level?: string, @Query('tags') tags?: string, @Query('includeDraft') includeDraft?: string) {
+  async list(@Req() req: Request, @Res() res: Response, @Query('query') query?: string, @Query('level') level?: string, @Query('tags') tags?: string, @Query('includeDraft') includeDraft?: string) {
     res.setHeader('Cache-Control', 'no-store');
-    const load = async () => {
+    try {
+      await this.auth.attachUserToRequest(req);
+    } catch {}
+    const user = this.auth.getUserFromRequest(req);
+    const isAuthed = !!user;
+    try {
       let data = await this.lessons.listLessons();
+      const lockedIds = data
+        .map((x: any) => String(x.id || x.lesson_no || '').padStart(3, '0'))
+        .filter((idValue) => !FREE_LESSON_IDS.has(idValue));
       const q = (query || '').trim().toLowerCase();
       const lv = (level || '').trim().toLowerCase();
       const tagSet = new Set((tags || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean));
-      const showDraft = (includeDraft || '').toLowerCase() === 'true';
+      const showDraft = isAuthed && (includeDraft || '').toLowerCase() === 'true';
       if (!showDraft) data = data.filter((x: any) => !!x.published);
       if (q) data = data.filter((x: any) => String(x.title || '').toLowerCase().includes(q));
       if (lv) data = data.filter((x: any) => String(x.level || '').toLowerCase() === lv);
       if (tagSet.size > 0) data = data.filter((x: any) => Array.isArray(x.tags) && x.tags.some((t: string) => tagSet.has(String(t).toLowerCase())));
-      return res.json({ code: 200, message: 'ok', data });
-    };
-    // 调用异步流程
-    (async ()=>{ try { await load(); } catch { res.status(500).json({ code:500, message:'error', data:{ error:'list failed' }}); } })();
-    return;
+      return res.json({ code: 200, message: 'ok', data, meta: { authenticated: isAuthed, freeLessonIds: Array.from(FREE_LESSON_IDS), lockedLessonIds: lockedIds } });
+    } catch {
+      res.status(500).json({ code:500, message:'error', data:{ error:'list failed' }});
+    }
   }
 
+
   @Get(':id')
-  meta(@Param('id') id: string, @Res() res: Response) {
+  async meta(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
+    try {
+      await this.auth.attachUserToRequest(req);
+    } catch {}
+    const isAuthed = !!this.auth.getUserFromRequest(req);
+    const normalizedId = String(id || '').padStart(3, '0');
+    if (!isAuthed && !FREE_LESSON_IDS.has(normalizedId)) {
+      return res.status(401).json({ code: 401, message: 'error', data: { error: 'login required' } });
+    }
     (async ()=>{
       try {
         const data = await this.lessons.getLessonMeta(id);
@@ -54,7 +76,15 @@ export class LessonsController {
   }
 
   @Get(':id/transcript')
-  transcript(@Param('id') id: string, @Res() res: Response) {
+  async transcript(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
+    try {
+      await this.auth.attachUserToRequest(req);
+    } catch {}
+    const isAuthed = !!this.auth.getUserFromRequest(req);
+    const normalizedId = String(id || '').padStart(3, '0');
+    if (!isAuthed && !FREE_LESSON_IDS.has(normalizedId)) {
+      return res.status(401).json({ code: 401, message: 'error', data: { error: 'login required' } });
+    }
     (async ()=>{
       try {
         const data = await this.lessons.getTranscriptOnly(id);
@@ -68,7 +98,15 @@ export class LessonsController {
   }
 
   @Get(':id/aggregate')
-  aggregate(@Param('id') id: string, @Res() res: Response, @Query('include') include?: string) {
+  async aggregate(@Param('id') id: string, @Req() req: Request, @Res() res: Response, @Query('include') include?: string) {
+    try {
+      await this.auth.attachUserToRequest(req);
+    } catch {}
+    const isAuthed = !!this.auth.getUserFromRequest(req);
+    const normalizedId = String(id || '').padStart(3, '0');
+    if (!isAuthed && !FREE_LESSON_IDS.has(normalizedId)) {
+      return res.status(401).json({ code: 401, message: 'error', data: { error: 'login required' } });
+    }
     const inc = new Set((include || 'meta,transcript,vocab,practice').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
     const out: any = {};
     const lessonDir = path.join(DATA_DIR, 'lessons', id);

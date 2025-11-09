@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [captchaRequired, setCaptchaRequired] = useState(false);
   const [loadingCaptcha, setLoadingCaptcha] = useState(false);
   const [msg, setMsg] = useState('');
+  const [redirectTo, setRedirectTo] = useState('/');
 
   const resetCaptcha = useCallback(() => {
     setCaptchaImage('');
@@ -47,6 +48,21 @@ export default function LoginPage() {
     setCaptchaRequired(false);
   }, [mode, resetCaptcha]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const redirectParam = params.get('redirect');
+      const modeParam = params.get('mode');
+      if (redirectParam) setRedirectTo(redirectParam);
+      if (modeParam === 'signup' || modeParam === 'login') {
+        setMode(modeParam);
+      }
+    } catch {
+      setRedirectTo('/');
+    }
+  }, []);
+
   const handleModeSwitch = (next: 'login' | 'signup') => {
     setMode(next);
     setMsg('');
@@ -69,6 +85,16 @@ export default function LoginPage() {
       setMsg('请输入账号和密码');
       return;
     }
+    const translateError = (value: string) => {
+      const map: Record<string, string> = {
+        'username/password required': '请输入账号和密码',
+        'username exists': '用户名已存在',
+        'invalid credentials': '账号或密码错误',
+        captcha_required: '请完成验证码后再试',
+        too_many_requests: '操作过于频繁，请稍后再试',
+      };
+      return map[value] || value;
+    };
     const url = mode === 'login' ? '/auth/login' : '/auth/signup';
     try {
       const res = await fetch(`${API}${url}`, {
@@ -79,12 +105,13 @@ export default function LoginPage() {
       });
       const j = await res.json().catch(() => ({}));
       if (res.ok) {
-        setMsg('成功');
-        window.location.href = '/account';
+        const successMsg = mode === 'login' ? '登录成功，正在跳转…' : '注册成功，正在跳转…';
+        setMsg(successMsg);
+        window.location.href = redirectTo || '/';
         return;
       }
       const error = j?.data?.error || '失败';
-      setMsg(error);
+      setMsg(translateError(error));
       if (j?.data?.captchaRequired) {
         await fetchCaptcha();
       } else if (mode === 'login' && captchaRequired) {
@@ -180,6 +207,9 @@ export default function LoginPage() {
                   placeholder="请输入密码"
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 />
+                {mode === 'signup' && (
+                  <p className={styles.hint}>至少 8 位，并同时包含大小写字母与数字，建议加入符号以增强安全性。</p>
+                )}
               </div>
               {mode === 'login' && captchaRequired && (
                 <div className={styles.field}>
@@ -213,7 +243,7 @@ export default function LoginPage() {
               <Button type="submit">{mode === 'login' ? '登录' : '注册账号'}</Button>
             </form>
 
-            <p className={`${styles.message} ${msg && msg !== '成功' ? styles.messageError : ''}`}>
+            <p className={`${styles.message} ${msg && !msg.startsWith('登录成功') && !msg.startsWith('注册成功') ? styles.messageError : ''}`}>
               {msg}
             </p>
             {mode === 'login' && !captchaRequired && (

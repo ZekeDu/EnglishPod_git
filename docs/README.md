@@ -6,6 +6,35 @@
 - 本地数据：`data/`（课程、字幕、词汇、练习、用户/会话、TTS 缓存）
 - 工具脚本与运维：`packages/scripts`、`tools/`
 
+## 应用功能概览
+
+English Pod 365 面向英语学习场景，提供以下核心能力：
+- 课程浏览与试听：按难度、标签筛选课程，在线播放主音频与播客。
+- 字幕联动：逐句字幕随时间轴滚动，支持多语种切换与时间戳质检提示。
+- 词汇卡片：展示词义、词性、例句，可一键加入个人复习列表。
+- 互动练习：完形填空与作文任务在线作答，后台支持评分与点评。
+- 复习调度：内置 SM-2 算法跟踪掌握度并生成复习计划。
+- 内容运营：后台导入/编辑课程、回滚历史、发布上线。
+
+## 用户地图（普通用户）
+
+1. 注册或登录账号，进入首页。
+2. 在课程列表中按主题或难度选择喜欢的课程。
+3. 播放主音频或播客，配合字幕阅读对话。
+4. 查看词汇卡片，勾选「加入复习」，在复习页查看待练项目。
+5. 完成完形和作文练习，提交后等待教师点评或自我复盘。
+6. 在个人主页追踪学习时长、已完成课程与复习进度。
+
+### 账号与安全提示
+
+- 登录地址：访问根域名后点击右上角「登录」，或直接打开 `/login`；支持 `redirect` 参数回跳。
+- 密码要求：注册时至少 8 位，并同时包含大小写字母与数字；连续错误将触发图形验证码。
+- 频率限制：登录与注册接口对同一 IP / 账号设有速率限制，触发后会返回“操作过于频繁”提示，请稍后再试。
+- 会话安全：登录成功后会写入 HttpOnly Cookie，支持在「账户」页面手动退出并清理所有会话。
+- 后台权限：所有 `/admin/*` 接口已通过统一 Guard 校验，仅管理员角色可访问。
+- 免费体验范围：未注册访客仅能试听 Lesson 001–010，且无法访问「复习」与「我」页面；进阶课程与进度同步需登录后解锁。
+- 练习提交：完形填空与作文在未登录状态下仅可预览，一旦点击“提交”会跳转至注册/登录页；登录后才会保存成绩、生成 AI 反馈。
+
 本文档聚焦于本地开发、手工导入、环境配置、对象存储直传、离线能力、以及数据库迁移落地步骤。
 
 ---
@@ -94,23 +123,24 @@ scripts/ops/start-production.sh
 
 ### 生成课程 JSON
 
-- PDF → JSON 脚本：`tools/pdf2jason_v2/ep365_json_builder_v3.py`
+- HTML/PDF → JSON 脚本：`tools/pdf2jason_v2/ep365_json_builder_v8.py`
   - 单课模式：
     ```bash
-    python tools/pdf2jason_v2/ep365_json_builder_v3.py \
-      --lesson_pdf path/to/lesson.pdf \
+    python tools/pdf2jason_v2/ep365_json_builder_v8.py \
+      --lesson_pdf path/to/englishpod_001.html \
       --host_pdf path/to/host.pdf \
       --outdir tools/pdf2jason_v2/output/<lesson_id>
     ```
-    在输出目录生成 `transcript.json`、`vocab.json`、`podcast_transcript.json`、`cloze.json`、`essay.json`。
-  - 批量模式：将 PDF 放在 `tools/pdf2jason_v2/input/<lesson_id>/`；脚本会优先识别 `englishpod_*.pdf` 为课文文件、`###*.pdf` 为主持人对话文件（`###` 为三位数字）。然后运行：
+    支持直接解析课程 HTML（`englishpod_###.html`）或旧版课文 PDF，输出 `lesson_###.json`（含 meta/transcript/vocab/podcast/practice）。
+  - 批量模式：将 `Lesson_###/englishpod_###.html` 与 `Lesson_###/### - Host.pdf` 放在同级目录，例如 `tools/pdf2jason_v2/EnglishPod_Lessons/`。然后运行：
     ```bash
-    python tools/pdf2jason_v2/ep365_json_builder_v3.py \
-      --batch_dir tools/pdf2jason_v2/input \
-      --out_root tools/pdf2jason_v2/output
+    python tools/pdf2jason_v2/ep365_json_builder_v8.py \
+      --batch_dir tools/pdf2jason_v2/EnglishPod_Lessons \
+      --outdir tools/pdf2jason_v2/output_html
+      --llm auto --api_key <DeepSeek 或 OpenAI Key>
     ```
-    每个子目录会在 `output/<lesson_id>/` 下生成对应 JSON，并写出 `batch_report.json` 汇总成功/失败信息。
-  - 可选参数：`--use_llm`、`--review_llm`、`--model`、`--api_key`、`--no_strip_footers`，批量/单课通用；未提供 `id/phrase/definition` 的词汇会在导入阶段自动补全。
+    每个 Lesson 会输出 `lesson_<id>.json`，并自动写入 `lessons.json`（可直接打包 Zip 导入）。
+  - 可选参数：`--no_practice`（跳过练习生成）、`--no_strip_footers`、`--provider`/`--model`。脚本默认会调用 DeepSeek/LLM 生成完形与作文提示；如无 Key，会回落到启发式模板。
 
 ### 写入本地数据目录
 
