@@ -82,7 +82,7 @@ English Pod 365 面向英语学习场景，提供以下核心能力：
 使用示例：
 
 ```bash
-export DATABASE_URL="postgresql://ep365:devpass@127.0.0.1:5432/englishpod"
+export DATABASE_URL="postgresql://ep12345:devpass12345@127.0.0.1:5432/englishpod"
 export NEXT_PUBLIC_API_BASE="https://api.englishpod365.com"
 
 scripts/ops/deploy-production.sh
@@ -90,22 +90,6 @@ scripts/ops/start-production.sh
 ```
 
 ---
-
-## 环境配置（必读）
-
-- `PORT`：API 端口（默认 4000，可顺延占用 4001/4002）
-- `NEXT_PUBLIC_API_BASE`：前端请求后端地址，开发态默认 `http://localhost:4000`
-- `DATA_DIR`：数据根目录；默认仓库下 `data/`，建议使用绝对路径以避免 IDE/脚本工作目录差异
-- （可选）S3/MinIO：若需在生产保留历史录音或集中存储音频，可配置 `S3_*` 变量；默认使用本地文件即可。
-
-保存 `.env` 后重新启动服务生效。
-
-> **模型 API Key 存储**  
-> 大模型评分 / TTS 的 `apiKey` 并不放在 `.env`。后台“模型服务管理”保存后，会写入数据库表 `app_setting` 的 `model-config` 项（默认同时写入 `DATA_DIR/config/models.json` 作为回退）。如需排查，可执行 `node apps/api-nest/scripts/show-model-keys.ts` 输出当前配置。
-
----
-
-## 数据与目录结构
 
 - 课程数据：持久化在 Postgres（`lesson`、`transcript`、`vocab`、`practice`、`lesson_podcast`、`lesson_history` 等表）；`data/lessons/{id}/` 仅作为导入/备份介质。
   - `meta.json`、`transcript.json`、`vocab.json`、`practice/*.json` 可由导入脚本或备份脚本生成。
@@ -119,7 +103,6 @@ scripts/ops/start-production.sh
 
 ---
 
-## 课程导入（数据准备）
 
 ### 生成课程 JSON
 
@@ -185,107 +168,3 @@ scripts/ops/start-production.sh
   - `/tts` 响应会返回 `{ provider, cached, fallback, error }`，方便排查是否降级。
 
 ---
-
-## PWA 与离线缓存
-
-- Service Worker：`apps/web-next/public/sw.js`
-  - 外壳预缓存；音频与 `lessons/*` 核心接口 cache-first；其他路径 network-first（失败用缓存）
-- 注册：`apps/web-next/pages/_app.tsx`
-- 课程级缓存：课程页“缓存本课用于离线”按钮
-- 离线管理：`/settings/offline`（从“个人主页 → 离线缓存”进入，展示容量统计、已缓存课程、一键清理/回传离线记录）
-
----
-
-## 账户与权限（开发态）
-
-- 登录：`/login`（首个注册用户为 `admin`，其余为 `user`），用户名 + 密码。
-- 会话：`user_sessions` 表存储 Cookie 会话；默认 7 天有效，`POST /auth/logout` 会失效并清理 Cookie。
-- 验证码：连续 5 次失败（10 分钟窗口，按用户/IP）后需要在登录体内携带 `captchaToken` + `captcha`，可通过 `GET /auth/captcha` 获取 base64 SVG。
-- 账户页：`/account`（查看角色、模拟订阅入口），订阅状态写入 `user_subscriptions`。
-- 管理端守卫：所有 `/admin/*` 需管理员角色。
-- 可选环境变量：`SESSION_COOKIE_NAME`（默认 `sid`）、`AUTH_LOGIN_MAX_FAILURES`（默认 5）、`AUTH_LOGIN_WINDOW_MS`（默认 10 分钟）、`AUTH_CAPTCHA_TTL_MS`（默认 120 秒）可调整策略。
-
-生产建议：Cookie+Session（Redis）+ CSRF、防爆破限流、邮箱或短信验证、密码重置、操作审计。
-
----
-
-## 数据库迁移（文件 → Postgres）
-
-迁移目标与表结构详见 `docs/db-schema.md`，Prisma 定义位于 `apps/api-nest/prisma/schema.prisma`。当前 API 默认以 Postgres 为权威数据源（确保设置 `DATABASE_URL`）。首次切换流程建议：
-
-1) 准备 Postgres 与扩展
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS pgcrypto;
-   CREATE EXTENSION IF NOT EXISTS pg_trgm; -- 可选
-   ```
-2) 应用 Prisma 迁移
-   ```bash
-   npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/initial.sql
-   psql "$DATABASE_URL" -f /tmp/initial.sql
-   ```
-   或直接使用仓库里的 `apps/api-nest/prisma/migrations/*/migration.sql`。
-3) 生成并导入课程/用户历史数据
-   ```bash
-   npm run export:sql > /tmp/lessons.sql
-   psql "$DATABASE_URL" -f /tmp/lessons.sql
-   ```
-   导出脚本会同步写入 `lesson/transcript/vocab/practice/lesson_podcast/lesson_history` 等表；后续可补充用户/进度导出脚本，对应写入 `users/*`、`user_progress`、`user_reviews` 等表。
-4) 更新环境变量并启动
-  ```bash
-  DATABASE_URL=postgres://ep365:devpass@127.0.0.1:5432/englishpod npm run dev:api
-  ```
-5) 保留 `data/` 目录作为热备；按需要执行双写或回滚（可通过 `tools/db/backup.sh` 定期导出数据库与音频资源）。
-
-### 配置与音频存储
-
-- **全局配置**：后台的模型服务（TTS、评分）配置已存入 `AppSetting` 表。首次访问会自动从 `data/config/models.json` 导入一份默认值。
-- **课程音频**：课程音频映射保存在 `LessonAudio` 表，`/media/lesson/:id/{main|podcast}` 会优先读取数据库，再回退到文件。
-- **迁移脚本**：如果历史项目中还保留 `data/media/lesson-audio.json`，可执行 `node tools/migrate-lesson-audio.js` 将旧映射写入数据库。
-
----
-
-## SEO & Sitemap（构建期生成）
-
-- 生成脚本：`apps/web-next/scripts/generate-sitemap.js`
-- 触发：在 `apps/web-next` 构建前（`prebuild`）自动运行
-- 数据来源：通过 `NEXT_PUBLIC_API_BASE` 调用 `/lessons` 接口，仅生成 `published=true` 的课程
-- 站点根：`SITE_ORIGIN`（默认 `http://localhost:3000`），输出到 `apps/web-next/public/sitemap.xml`
-- 手动运行示例：
-  ```
-  SITE_ORIGIN=https://your-domain.com node apps/web-next/scripts/generate-sitemap.js
-  ```
-
----
-
-## 其他资料
-
-- `docs/deployment.md`：生产部署详细步骤
-- `docs/db-schema.md`：数据库结构说明
-- `docs/ui-mobile-design.md`：移动优先 UI 设计规范
-- `docs/repository-ignore.md`：提交/发布前需要排除的文件列表
-
----
-
-## 脚本与测试
-
-- 导入校验：`node packages/scripts/import-lessons.js`（打印每课错误报告；含测试 `packages/scripts/tests/import-lessons.test.js`）
-- 直传自检：`API_BASE=http://localhost:4000 npm run check:upload`
-  - 请求 `/upload/presign` → 直传小文本 → 输出 `{ ok, key, finalUrl, method, uploadUrl }`
-- API 集成测试（本地）：`node tests/api.integration.js`
-- 备份脚本：`DATABASE_URL=... DATA_DIR=... tools/db/backup.sh ./backups`（输出 pg_dump + 音频/缓存压缩包）
-- 旧版音频映射迁移：`node tools/migrate-lesson-audio.js`
-
----
-
-- 课程列表为空：确认 Nest API 已启动且连接 Postgres；检查 `lesson` 表是否有已发布课程（`published=true`），并确保前端 `NEXT_PUBLIC_API_BASE` 指向正确地址
-- 发布被拦截：查看编辑页“时间戳质检”错误项（重叠/空文本/无效时间等）并修正
-
----
-
-
-docker run --name pg16 \
-  -e POSTGRES_PASSWORD=devpass \
-  -e POSTGRES_USER=ep365 \
-  -e POSTGRES_DB=englishpod \
-  -p 5432:5432 \
-  postgres:16
