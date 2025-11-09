@@ -1,0 +1,17 @@
+:root { --accent:#2f76ff; }
+body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+main { padding: 12px; max-width: 980px; margin: 0 auto; }
+header { display:flex; justify-content:space-between; align-items:center; gap: 12px; }
+nav { display:flex; gap:12px; align-items:center; }
+.player { margin: 12px 0; }
+.layout { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+@media (max-width: 720px){ .layout{ grid-template-columns:1fr; } }
+.transcript { border:1px solid #eee; border-radius:8px; padding:8px; }
+.recorder { border:1px solid #eee; border-radius:8px; padding:8px; }
+ul { list-style:none; padding:0; margin:0; max-height: 60vh; overflow:auto; }
+li { padding: 6px 8px; border-radius:6px; cursor:pointer; }
+li:hover { background: #f8f9fb; }
+li.active { background: #eaf1ff; outline: 1px solid var(--accent); }
+.time { color:#888; font-size: 12px; margin-right: 8px; }
+.rec-controls button { margin-right: 8px; }
+

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>English Pod 365 — Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>English Pod 365 — 单课原型</h1>
+        <nav>
+          <button id="btn-load">加载样例课</button>
+          <label>倍速
+            <select id="rate">
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+            </select>
+          </label>
+        </nav>
+      </header>
+
+      <section class="player">
+        <audio id="audio" controls preload="metadata"></audio>
+      </section>
+
+      <section class="layout">
+        <div class="transcript">
+          <h3>逐句字幕</h3>
+          <ul id="segments"></ul>
+        </div>
+        <div class="recorder">
+          <h3>跟读评分</h3>
+          <p>当前句：<span id="current-text">(未选择)</span></p>
+          <div class="rec-controls">
+            <button id="rec-start">开始录音</button>
+            <button id="rec-stop" disabled>停止并评分</button>
+          </div>
+          <div id="score"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+  </html>
+

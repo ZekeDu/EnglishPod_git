@@ -1,0 +1,46 @@
+{
+  "name": "englishpod365",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:start": "node apps/api/server.js",
+    "dev:api": "PORT=4000 npm run -w apps/api-nest start:dev",
+    "dev:api:4001": "PORT=4001 npm run -w apps/api-nest start:dev",
+    "dev:web": "NEXT_PUBLIC_API_BASE=http://localhost:4000 npm run -w apps/web-next dev",
+    "dev:web:4001": "NEXT_PUBLIC_API_BASE=http://localhost:4001 npm run -w apps/web-next dev",
+    "test:score": "node apps/api/tests/score.test.js",
+    "test:import": "node packages/scripts/tests/import-lessons.test.js",
+    "test": "npm run test:score && npm run test:import",
+    "e2e": "playwright test",
+    "e2e:review": "playwright test tests/e2e/review.spec.ts",
+    "e2e:offline": "playwright test tests/e2e/offline.spec.ts",
+    "lint": "eslint . --ext .js,.ts,.tsx",
+    "format": "prettier -w .",
+    "test:api": "node tests/api.integration.js",
+    "test:srs": "ts-node -O '{\"module\":\"commonjs\"}' apps/api-nest/tests/srs.unit.test.ts",
+    "export:sql": "node packages/scripts/export-lessons-sql.js",
+    "check:upload": "node packages/scripts/check-upload.js",
+    "prisma:generate": "npm run -w apps/api-nest prisma:generate",
+    "build": "npm run --workspace apps/api-nest build && npm run --workspace apps/web-next build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "./.eslintrc.json"
+    ]
+  },
+  "prettier": "./.prettierrc.json",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@typescript-eslint/eslint-plugin": "^8.7.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3"
+  },
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  }
+}

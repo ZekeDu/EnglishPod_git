@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>lessons.json 批量导入格式说明</title>
+  <style>body{font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial;padding:24px;line-height:1.6;color:#0f172a} code,pre{background:#f5f6f8;padding:2px 6px;border-radius:4px} pre{padding:12px;overflow:auto}</style>
+</head>
+<body>
+  <h1>lessons.json 批量导入格式（Zip 方案）</h1>
+  <p>压缩包结构推荐：</p>
+  <pre>&lt;root&gt;/
+  lessons.json            # 多课数组
+  audio/                  # 音频目录（可选）
+    1_main.mp3
+    1_podcast.mp3
+    ...</pre>
+  <p>lessons.json 顶层：</p>
+  <pre>{
+  "version": "1.1",
+  "lessons": [ Lesson, ... ]
+}</pre>
+  <p>Lesson 对象主要字段：</p>
+  <pre>{
+  "id": "1" ,  // 或 lesson_no: 1（二选一）
+  "meta": {
+    "title": "Lesson Title",
+    "level": "Elementary|Intermediate|Upper-Intermediate",
+    "tags": ["tag1","tag2"],
+    "duration": 300,
+    "published": false,
+    "audio": { "file": "1_main.mp3" } // 或 { "url": "https://.../main.mp3" }
+  },
+  "transcript": {
+    "segments": [ { "idx":0, "start_sec":0.50, "end_sec":1.80, "text_en":"Hello!" } ]
+  },
+  "vocab": {
+    "cards": [ { "word":"example", "meaning":"示例" } ]
+  },
+  "practice": {
+    "cloze": { "passage": "I {1} English.", "items":[ {"index":1, "options":["like","likes"], "answer":"like" } ] },
+    "essay": { "prompt":"Write...", "min_words":30, "max_words":200 }
+  },
+  "podcast": {
+    "meta": { "duration": 600 },
+    "audio": { "file": "1_podcast.mp3" },
+    "transcript": { "dialogue": [ { "idx":0, "speaker":"M", "text":"Hello" } ] }
+  }
+}</pre>
+  <h2>校验要点</h2>
+  <ul>
+    <li>id/lesson_no：数字字符串且唯一</li>
+    <li>meta.title/audio：必填；audio 可为 <code>file</code>（相对 <code>audio/</code>）或 <code>url</code></li>
+    <li>transcript.segments：start_sec 单调、不与上一段重叠、text_en 非空</li>
+    <li>vocab.cards：word|phrase 与 meaning 至少其一有效</li>
+    <li>practice：cloze.items[].index 为整数；essay 的词数范围合理</li>
+    <li>podcast：dialogue[].text 非空</li>
+  </ul>
+  <h2>导入选项（Query）</h2>
+  <ul>
+    <li><code>dry_run=1</code>：仅校验不写入</li>
+    <li><code>overwrite=</code>：<code>all</code> 或以逗号分隔的模块集合（meta,transcript,vocab,practice,podcast）</li>
+    <li><code>publish=1</code>：导入后自动发布课程</li>
+  </ul>
+  <h2>命名规范（当使用 file 形式音频）</h2>
+  <ul>
+    <li>课文主音频：<code>data/lessons/{id}/{id}_main.ext</code></li>
+    <li>播客音频：<code>data/lessons/{id}/{id}_podcast.ext</code></li>
+  </ul>
+</body>
+</html>

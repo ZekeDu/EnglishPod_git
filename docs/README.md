@@ -89,6 +89,29 @@ scripts/ops/start-production.sh
 （如需要对象存储，可在生产环境单独部署 MinIO/S3 服务，并在 `.env` 中配置 `S3_*` 相关参数。）
 
 ---
+
+## 课程导入（数据准备）
+
+### 生成课程 JSON
+
+- PDF → JSON 脚本：`tools/pdf2jason_v2/ep365_json_builder_v3.py`
+  - 单课模式：
+    ```bash
+    python tools/pdf2jason_v2/ep365_json_builder_v3.py \
+      --lesson_pdf path/to/lesson.pdf \
+      --host_pdf path/to/host.pdf \
+      --outdir tools/pdf2jason_v2/output/<lesson_id>
+    ```
+    在输出目录生成 `transcript.json`、`vocab.json`、`podcast_transcript.json`、`cloze.json`、`essay.json`。
+  - 批量模式：将 PDF 放在 `tools/pdf2jason_v2/input/<lesson_id>/`；脚本会优先识别 `englishpod_*.pdf` 为课文文件、`###*.pdf` 为主持人对话文件（`###` 为三位数字）。然后运行：
+    ```bash
+    python tools/pdf2jason_v2/ep365_json_builder_v3.py \
+      --batch_dir tools/pdf2jason_v2/input \
+      --out_root tools/pdf2jason_v2/output
+    ```
+    每个子目录会在 `output/<lesson_id>/` 下生成对应 JSON，并写出 `batch_report.json` 汇总成功/失败信息。
+  - 可选参数：`--use_llm`、`--review_llm`、`--model`、`--api_key`、`--no_strip_footers`，批量/单课通用；未提供 `id/phrase/definition` 的词汇会在导入阶段自动补全。
+
 ### 写入本地数据目录
 
 生成的 JSON 可通过以下任一方式导入到应用：
@@ -203,3 +226,36 @@ scripts/ops/start-production.sh
   ```
 
 ---
+
+## 其他资料
+
+- `docs/deployment.md`：生产部署详细步骤
+- `docs/db-schema.md`：数据库结构说明
+- `docs/ui-mobile-design.md`：移动优先 UI 设计规范
+- `docs/repository-ignore.md`：提交/发布前需要排除的文件列表
+
+---
+
+## 脚本与测试
+
+- 导入校验：`node packages/scripts/import-lessons.js`（打印每课错误报告；含测试 `packages/scripts/tests/import-lessons.test.js`）
+- 直传自检：`API_BASE=http://localhost:4000 npm run check:upload`
+  - 请求 `/upload/presign` → 直传小文本 → 输出 `{ ok, key, finalUrl, method, uploadUrl }`
+- API 集成测试（本地）：`node tests/api.integration.js`
+- 备份脚本：`DATABASE_URL=... DATA_DIR=... tools/db/backup.sh ./backups`（输出 pg_dump + 音频/缓存压缩包）
+- 旧版音频映射迁移：`node tools/migrate-lesson-audio.js`
+
+---
+
+- 课程列表为空：确认 Nest API 已启动且连接 Postgres；检查 `lesson` 表是否有已发布课程（`published=true`），并确保前端 `NEXT_PUBLIC_API_BASE` 指向正确地址
+- 发布被拦截：查看编辑页“时间戳质检”错误项（重叠/空文本/无效时间等）并修正
+
+---
+
+
+docker run --name pg16 \
+  -e POSTGRES_PASSWORD=devpass \
+  -e POSTGRES_USER=ep365 \
+  -e POSTGRES_DB=englishpod \
+  -p 5432:5432 \
+  postgres:16

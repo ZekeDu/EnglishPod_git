@@ -1,0 +1,187 @@
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 120px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.statsRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 110px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(14,165,233,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statLabel {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.flashCard {
+  background: var(--color-surface);
+  border-radius: 20px;
+  border: 1px solid rgba(15,23,42,0.08);
+  box-shadow: var(--elev-2);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progressBar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(15,23,42,0.08);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0ea5e9, #14b8a6);
+}
+
+.phraseRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.phraseText {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.phraseActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconButton {
+  border: none;
+  background: rgba(15,23,42,0.06);
+  border-radius: 999px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.iconButton:hover {
+  background: rgba(14,165,233,0.18);
+  color: var(--color-primary);
+}
+
+.meaning {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 15px;
+}
+
+.exampleList {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.actions button {
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  background: rgba(15,23,42,0.05);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.actions button.primary {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 32px 0;
+}
+
+.historyCard {
+  border-radius: 18px;
+  padding: 20px;
+  background: var(--color-surface);
+  border: 1px solid rgba(15,23,42,0.06);
+}
+
+.historyGrid {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 52px;
+}
+
+.historyBar {
+  flex: 1;
+  border-radius: 4px;
+  background: rgba(14,165,233,0.35);
+}
+
+.bottomSheetTrigger {
+  position: fixed;
+  right: 16px;
+  bottom: 96px;
+}
+
+@media (min-width: 768px) {
+  .actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

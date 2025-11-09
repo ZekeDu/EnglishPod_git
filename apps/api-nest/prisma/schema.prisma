@@ -1,0 +1,266 @@
+// Prisma schema（扩展：加入用户、录音、SRS）
+// 已启用 Prisma Client 生成器与数据源配置
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lesson {
+  id           String    @id
+  lesson_no    Int
+  title        String
+  level        String?
+  tags         Json?
+  duration     Int?
+  audio_url    String
+  status       String    @default("draft")
+  version      Int       @default(1)
+  published    Boolean   @default(false)
+  published_at DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  transcript      Transcript?
+  vocab           Vocab?
+  practice          Practice?
+  histories         LessonHistory[]
+  progress          UserProgress[]
+  practiceAttempts  PracticeAttempt[]
+  audios            LessonAudio[]
+  podcast          LessonPodcast?
+}
+
+model Transcript {
+  lesson_id String @id
+  segments  Json
+  lesson    Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+}
+
+model Vocab {
+  lesson_id String @id
+  cards     Json
+  lesson    Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+}
+
+model Practice {
+  lesson_id String @id
+  cloze     Json?
+  essay     Json?
+  lesson    Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+}
+
+model LessonPodcast {
+  lesson_id  String @id
+  meta       Json?
+  transcript Json?
+  lesson     Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+}
+
+model PracticeAttempt {
+  id          String   @id @default(uuid())
+  user_id     String
+  lesson_id   String
+  type        String
+  cloze_score Int?
+  essay_text  String?
+  feedback    Json?
+  provider    String?
+  model       String?
+  latency_ms  Int?
+  created_at  DateTime @default(now())
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([lesson_id])
+  @@index([type])
+}
+
+model LessonHistory {
+  id         String   @id @default(uuid())
+  lesson_id  String
+  version    Int
+  reason     String?
+  snapshot   Json
+  created_at DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@index([lesson_id])
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String?   @unique
+  password_hash String
+  role          String    @default("user")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  last_login_at DateTime?
+
+  sessions         UserSession[]
+  loginAttempts    LoginAttempt[]
+  reviews          Review[]
+  reviewLogs       ReviewLog[]
+  progress         UserProgress[]
+  dailyProgress    UserDailyProgress[]
+  subscriptions    UserSubscription[]
+  uploads          Upload[]
+  practiceAttempts PracticeAttempt[]
+}
+
+// SRS 当前调度状态（按卡片维度）
+model Review {
+  user_id     String
+  card_id     String
+  repetitions Int      @default(0)
+  interval    Int      @default(0) // days
+  ef          Float    @default(2.5)
+  due_at      DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, card_id])
+  @@index([due_at])
+}
+
+// SRS 历史日志（可选）
+model ReviewLog {
+  id         String   @id @default(uuid())
+  user_id    String
+  card_id    String
+  rating     Int
+  created_at DateTime @default(now())
+  meta       Json?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([card_id])
+}
+
+model UserSession {
+  id            String    @id @default(uuid())
+  user_id       String
+  session_token String    @unique
+  created_at    DateTime  @default(now())
+  expires_at    DateTime
+  revoked_at    DateTime?
+  ip            String?
+  user_agent    String?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+}
+
+model LoginAttempt {
+  id         String   @id @default(uuid())
+  user_id    String?
+  username   String?
+  ip         String?
+  success    Boolean
+  created_at DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([created_at])
+  @@index([username])
+  @@index([ip])
+}
+
+model UserProgress {
+  user_id    String
+  lesson_id  String
+  listen_sec Int      @default(0)
+  score      Int      @default(0)
+  completed  Boolean  @default(false)
+  updated_at DateTime @default(now())
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, lesson_id])
+  @@index([lesson_id])
+}
+
+model UserDailyProgress {
+  user_id   String
+  date      DateTime
+  completed Boolean  @default(false)
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, date])
+  @@index([date])
+}
+
+model UserSubscription {
+  id         String    @id @default(uuid())
+  user_id    String
+  plan       String
+  status     String    @default("none")
+  expire_at  DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id])
+  @@index([user_id])
+  @@index([status])
+}
+
+model Upload {
+  id            String   @id @default(uuid())
+  user_id       String?
+  key           String   @unique
+  original_name String?
+  mime          String?
+  size          Int?
+  created_at    DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+}
+
+model CaptchaChallenge {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  answer     String
+  ip         String?
+  attempts   Int      @default(0)
+  created_at DateTime @default(now())
+  expires_at DateTime
+
+  @@index([created_at])
+  @@index([ip])
+}
+
+model LessonAudio {
+  lesson_id String
+  kind      String
+  url       String
+  duration  Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  lesson Lesson @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@id([lesson_id, kind])
+  @@index([kind])
+}
+
+model AppSetting {
+  key        String   @id
+  value      Json
+  updated_at DateTime @default(now())
+}
