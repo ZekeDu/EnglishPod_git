@@ -74,8 +74,6 @@ docker-compose.override.yml
 # Tools
 tools/
 
-#docs
-docs/
 
 #example
 example/
