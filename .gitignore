@@ -77,3 +77,15 @@ tools/
 
 #example
 example/
+docs/SQL.md
+docs/need.md
+docs/design.md
+docs/all-todo.md
+docs/db-trans.md
+docs/prd-todo.md
+docs/db-schema.md
+docs/next-todo.md
+docs/import-format.md
+docs/deployment_old.md
+docs/repository-ignore.md
+docs/essay-feedback-design.md
