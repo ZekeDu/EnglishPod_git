@@ -39,7 +39,6 @@ tmp/
 data/
 !data/README.md
 backups/
-*.sql
 *.sqlite
 *.zip
 *.tar.gz
