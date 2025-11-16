@@ -61,7 +61,7 @@ apps/web-next/public/robots.txt
 
 # Prisma
 apps/api-nest/prisma/.env
-apps/api-nest/prisma/migrations/*/migration_lock.toml
+apps/api-nest/prisma/migrations/migration_lock.toml
 
 # Docker / compose artifacts
 *.pid
