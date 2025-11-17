@@ -383,20 +383,6 @@ export default function LessonDetail() {
           {tab === 'practice' && <div className={styles.stack}>{practiceBlock}</div>}
         </section>
 
-        <footer className={styles.footerBar}>
-          <div className={styles.footerInfo}>
-            <div className={styles.footerTitle}>{meta?.title || '课程详情'}</div>
-            <div className={styles.footerMeta}>{meta?.lesson_no ? `Lesson ${meta.lesson_no}` : ''}</div>
-          </div>
-          <div className={styles.footerActions}>
-            <Button as="a" href={`/practice/${id}`}>
-              做练习
-            </Button>
-            <Button variant="ghost" as="a" href="/review" size="sm">
-              去复习
-            </Button>
-          </div>
-        </footer>
       </div>
     </>
   );

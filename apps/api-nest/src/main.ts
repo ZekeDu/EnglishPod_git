@@ -5,10 +5,36 @@ import { AppModule } from './modules/app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
-  // Allow dev origins and cookies for cross-origin (localhost:3000/4000/4001)
+  /*
+   * Allow configured origins + localhost for development so that
+   * production domains such as https://zekezone.cn can call the API
+   * without hitting “Failed to fetch / CORS” errors.
+   */
+  const parseOrigins = (...values: (string | undefined)[]) =>
+    values
+      .flatMap((value) => (value ?? '').split(','))
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .map((origin) => origin.replace(/\/$/, ''));
+
+  const extraOrigins = parseOrigins(
+    process.env.CORS_ORIGINS,
+    process.env.NEXT_PUBLIC_API_BASE,
+    process.env.NEXT_PUBLIC_WEB_ORIGIN,
+    process.env.PUBLIC_WEB_ORIGIN,
+  );
+  const allowedOrigins = new Set([
+    'http://localhost:3000',
+    'http://localhost:4000',
+    'http://localhost:4001',
+    ...extraOrigins,
+  ]);
+
   app.enableCors({
     origin: (origin, cb) => {
+      // eslint-disable-next-line no-console
       if (!origin) return cb(null, true); // same-origin or curl
+      if (allowedOrigins.has(origin)) return cb(null, true);
       const ok = /^(http:\/\/(localhost|127\.0\.0\.1):\d{2,5})$/i.test(origin);
       return cb(null, ok);
     },
