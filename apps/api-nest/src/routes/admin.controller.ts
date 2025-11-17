@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import { ensureTTSFile } from '../utils/tts';
 import { LessonAudioService } from '../services/lesson-audio.service';
 import { AdminGuard } from '../guards/admin.guard';
+import { AppSettingService } from '../services/app-setting.service';
 
 function readJSON<T>(p: string, fb: T): T { try { return JSON.parse(fs.readFileSync(p, 'utf-8')) as T; } catch { return fb; } }
 function writeJSON(p: string, obj: any) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(obj, null, 2)); }
@@ -58,7 +59,11 @@ function ensureDir(p: string) { fs.mkdirSync(p, { recursive: true }); }
 @UseGuards(AdminGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly lessons: LessonService, private readonly lessonAudio: LessonAudioService) {}
+  constructor(
+    private readonly lessons: LessonService,
+    private readonly lessonAudio: LessonAudioService,
+    private readonly settings: AppSettingService,
+  ) {}
 
   @Get('lessons')
   async list(@Req() req: Request) {
@@ -465,9 +470,10 @@ export class AdminController {
     ensureDir(dirCache);
     let created = 0, skipped = 0, fallback = 0;
     const errors: { text: string; error: string }[] = [];
+    const cfg = await this.settings.get<any>('model-config', null);
     for (const text of set) {
       try {
-        const result = await ensureTTSFile(text);
+        const result = await ensureTTSFile(text, {}, cfg);
         if (result.cached) skipped++; else created++;
         if (result.fallback) {
           fallback++;

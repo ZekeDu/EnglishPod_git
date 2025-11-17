@@ -46,15 +46,6 @@ function ensureDir(p: string) {
   fs.mkdirSync(p, { recursive: true });
 }
 
-function readModelsConfig(): ModelsConfig | null {
-  try {
-    const p = path.join(DATA_DIR, 'config', 'models.json');
-    return JSON.parse(fs.readFileSync(p, 'utf-8')) as ModelsConfig;
-  } catch {
-    return null;
-  }
-}
-
 function hashKey(parts: string[]) {
   return createHash('sha1').update(parts.join('|')).digest('hex');
 }
@@ -292,7 +283,11 @@ export type EnsureTTSResult = {
   error?: string;
 };
 
-export async function ensureTTSFile(text: string, opts: { lang?: string; voice?: string; rate?: number | string } = {}): Promise<EnsureTTSResult> {
+export async function ensureTTSFile(
+  text: string,
+  opts: { lang?: string; voice?: string; rate?: number | string } = {},
+  config?: ModelsConfig | null,
+): Promise<EnsureTTSResult> {
   const normalized = (text || '').trim();
   const lang = opts.lang || 'en';
   const rateNum = typeof opts.rate === 'number' ? opts.rate : parseFloat(String(opts.rate || '1')) || 1;
@@ -311,20 +306,23 @@ export async function ensureTTSFile(text: string, opts: { lang?: string; voice?:
 
   try {
     if (!normalized) throw new Error('empty text');
-    const cfg = readModelsConfig();
-    provider = cfg?.tts?.enabled ? (cfg.tts?.provider || 'local') : 'local';
+    const cfg = config || null;
+    const ttsCfg = cfg?.tts;
+    provider = ttsCfg?.enabled ? ttsCfg.provider || 'local' : 'local';
     let buffer: Buffer | null = null;
     if (provider === 'aliyun') {
-      buffer = await synthesizeAliyun(normalized, { lang, voice: voicePref, rate: rateNum }, cfg?.tts?.providers?.aliyun || {});
+      buffer = await synthesizeAliyun(normalized, { lang, voice: voicePref, rate: rateNum }, ttsCfg?.providers?.aliyun || {});
     } else if (provider === 'azure') {
-      buffer = await synthesizeAzure(normalized, { lang, voice: voicePref, rate: rateNum }, cfg?.tts?.providers?.azure || {});
+      buffer = await synthesizeAzure(normalized, { lang, voice: voicePref, rate: rateNum }, ttsCfg?.providers?.azure || {});
     } else if (provider === 'local') {
-      const localCfg = cfg?.tts?.providers?.local || {};
+      const localCfg = ttsCfg?.providers?.local || {};
       if (localCfg.base) {
         buffer = await synthesizeLocal(normalized, { lang, voice: voicePref || localCfg.voice, rate: rateNum }, localCfg);
       } else {
         throw new Error('local provider not configured');
       }
+    } else {
+      throw new Error(`unsupported provider ${provider}`);
     }
     if (buffer && buffer.length > 0) {
       fs.writeFileSync(file, buffer);

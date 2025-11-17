@@ -404,7 +404,5 @@ type ScoringConfig = {
 } | null;
 
 async function loadLegacyScoring(): Promise<ScoringConfig> {
-  const modelsPath = path.join(DATA_DIR, 'config', 'models.json');
-  const models = readJSON<any>(modelsPath, null);
-  return models?.scoring || null;
+  return null;
 }

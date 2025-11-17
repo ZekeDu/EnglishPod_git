@@ -1,18 +1,7 @@
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
-import { DATA_DIR } from '../utils/data';
 import { getUserFromRequest } from '../utils/auth';
 import { AppSettingService } from '../services/app-setting.service';
-
-function readJSON<T>(p: string, fb: T): T {
-  try {
-    return JSON.parse(fs.readFileSync(p, 'utf-8')) as T;
-  } catch {
-    return fb;
-  }
-}
 
 type ModelsConfig = {
   tts: {
@@ -63,9 +52,8 @@ export class ModelConfigController {
   private async loadConfig(): Promise<ModelsConfig> {
     const fromDb = await this.settings.get<ModelsConfig | null>(this.CONFIG_KEY, null);
     if (fromDb) return fromDb;
-    const fallback = readJSON<ModelsConfig>(path.join(DATA_DIR, 'config', 'models.json'), DEFAULT_CFG);
-    await this.settings.set(this.CONFIG_KEY, fallback);
-    return fallback;
+    await this.settings.set(this.CONFIG_KEY, DEFAULT_CFG);
+    return DEFAULT_CFG;
   }
 
   private async saveConfig(cfg: ModelsConfig) {
