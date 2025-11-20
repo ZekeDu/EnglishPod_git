@@ -51,7 +51,7 @@
   <ul>
     <li>id/lesson_no：数字字符串且唯一</li>
     <li>meta.title/audio：必填；audio 可为 <code>file</code>（相对 <code>audio/</code>）或 <code>url</code></li>
-    <li>transcript.segments：start_sec 单调、不与上一段重叠、text_en 非空</li>
+    <li>transcript.segments：start_sec 单调、text_en 非空；end_sec 可留空，系统会自动推断</li>
     <li>vocab.cards：word|phrase 与 meaning 至少其一有效</li>
     <li>practice：cloze.items[].index 为整数；essay 的词数范围合理</li>
     <li>podcast：dialogue[].text 非空</li>

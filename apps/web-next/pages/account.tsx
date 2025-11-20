@@ -45,7 +45,7 @@ const plans = [
     id: 'yearly',
     title: '年度计划',
     price: '¥468',
-    desc: '年度尊享，额外赠送课程包和离线缓存特权',
+    desc: '年度尊享，额外赠送课程包与学习报告',
     label: 'Soon',
   },
 ];
@@ -179,17 +179,10 @@ export default function AccountPage() {
         {message && <span className={styles.infoLabel}>{message}</span>}
       </Card>
 
-      <Card className={styles.offlineCard}>
-        <h3 className={styles.sectionTitle}>离线缓存</h3>
-        <p className={styles.subtitle}>缓存课程音频，离线也能继续学习。</p>
-        <Button as="a" href="/settings/offline" size="sm">
-          管理离线课程
-        </Button>
-      </Card>
       <section className={styles.subscriptionBanner}>
         <h3 className={styles.sectionTitle}>高级会员即将上线</h3>
         <p className={styles.subtitle}>
-          计划包含扩展课程包、深度作文点评、离线缓存与学习报告。现在订阅将自动升级新版本。
+          计划包含扩展课程包、深度作文点评和学习报告。现在订阅将自动升级新版本。
         </p>
         <div className={styles.planGrid}>
           {plans.map((plan) => (

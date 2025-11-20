@@ -620,7 +620,6 @@ const randomKey = () =>
 type SegmentForm = {
   key: string;
   start_sec: string;
-  end_sec: string;
   text_en: string;
   textZh?: string;
 };
@@ -628,7 +627,7 @@ type SegmentForm = {
 type SegmentOutput = {
   idx: number;
   start_sec: number;
-  end_sec: number;
+  end_sec?: number;
   text_en: string;
   text_zh?: string;
 };
@@ -650,7 +649,6 @@ function TranscriptEditor({
         transcript.segments.map((seg: any) => ({
           key: randomKey(),
           start_sec: seg?.start_sec !== undefined ? String(seg.start_sec) : '',
-          end_sec: seg?.end_sec !== undefined ? String(seg.end_sec) : '',
           text_en: seg?.text_en || '',
           textZh: seg?.text_zh || '',
         })),
@@ -669,7 +667,7 @@ function TranscriptEditor({
   const addSegment = () => {
     setSegments((prev) => [
       ...prev,
-      { key: randomKey(), start_sec: '', end_sec: '', text_en: '', textZh: '' },
+      { key: randomKey(), start_sec: '', text_en: '', textZh: '' },
     ]);
   };
 
@@ -694,9 +692,8 @@ function TranscriptEditor({
     for (let i = 0; i < segments.length; i += 1) {
       const seg = segments[i];
       const start = Number(seg.start_sec);
-      const end = Number(seg.end_sec);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) {
-        setError('开始/结束时间必须是数字');
+      if (!Number.isFinite(start)) {
+        setError('开始时间必须是数字');
         return;
       }
       if (seg.text_en.trim().length === 0) {
@@ -706,7 +703,6 @@ function TranscriptEditor({
       const item: SegmentOutput = {
         idx: i,
         start_sec: start,
-        end_sec: end,
         text_en: seg.text_en.trim(),
       };
       const zh = seg.textZh?.trim();
@@ -728,27 +724,16 @@ function TranscriptEditor({
       <div className={styles.itemList}>
         {segments.map((seg, idx) => (
           <div key={seg.key} className={styles.itemCard}>
-            <div className={styles.twoCol}>
-              <div className={styles.fieldGroup}>
-                <label>开始秒</label>
-                <input
-                  className={styles.input}
-                  type="number"
-                  value={seg.start_sec}
-                  onChange={(e) => update(idx, 'start_sec', e.currentTarget.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className={styles.fieldGroup}>
-                <label>结束秒</label>
-                <input
-                  className={styles.input}
-                  type="number"
-                  value={seg.end_sec}
-                  onChange={(e) => update(idx, 'end_sec', e.currentTarget.value)}
-                  placeholder="0"
-                />
-              </div>
+            <div className={styles.fieldGroup}>
+              <label>开始秒</label>
+              <input
+                className={styles.input}
+                type="number"
+                value={seg.start_sec}
+                onChange={(e) => update(idx, 'start_sec', e.currentTarget.value)}
+                placeholder="0"
+              />
+              <span className={styles.fieldHint}>结束时间由系统根据下一句自动推断</span>
             </div>
             <div className={styles.fieldGroup}>
               <label>英文台词</label>

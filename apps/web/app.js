@@ -21,7 +21,21 @@ async function loadLesson() {
   const meta = await fetch(`${API}/lessons/${lessonId}`).then(r => r.json()).then(j=>j.data);
   audio.src = meta.audio_url || '';
   // transcript
-  segments = await fetch(`${API}/lessons/${lessonId}/transcript`).then(r => r.json()).then(j=>j.data.segments || []);
+  segments = await fetch(`${API}/lessons/${lessonId}/transcript`).then(r => r.json()).then(j=> {
+    const data = Array.isArray(j.data?.segments) ? j.data.segments : [];
+    return data.map((seg, idx) => {
+      const start = Number(seg.start_sec) || 0;
+      const next = data[idx + 1];
+      const nextStart = next && Number(next.start_sec);
+      let end = Number(seg.end_sec);
+      if (!Number.isFinite(end) || end <= start) {
+        if (Number.isFinite(nextStart) && nextStart > start) end = nextStart;
+        else if (audio.duration && audio.duration > start) end = audio.duration;
+        else end = start + 3;
+      }
+      return { ...seg, start_sec: start, end_sec: end };
+    });
+  });
   renderSegments();
 }
 

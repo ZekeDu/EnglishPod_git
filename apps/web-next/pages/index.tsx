@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import styles from './index.module.css';
 import { Badge, Button, Card } from '../components/ui';
-import { isLessonCached } from '../utils/offline';
 
 type Lesson = {
   id: string;
@@ -26,7 +25,6 @@ const API = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
 export default function Home() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [cachedMap, setCachedMap] = useState<Record<string, boolean>>({});
   const [summary, setSummary] = useState<PracticeSummary>(null);
   const [reviewStats, setReviewStats] = useState<ReviewStats>(null);
   const [profileName, setProfileName] = useState<string>('学习者');
@@ -89,22 +87,6 @@ export default function Home() {
       .catch(() => setReviewStats(null));
 
   }, []);
-
-  useEffect(() => {
-    if (lessons.length === 0) return;
-    (async () => {
-      const map: Record<string, boolean> = {};
-      for (const lesson of lessons.slice(0, 12)) {
-        const audioUrl = `${API}/media/lesson/${lesson.id}/main`;
-        try {
-          map[lesson.id] = await isLessonCached(lesson.id, audioUrl);
-        } catch {
-          map[lesson.id] = false;
-        }
-      }
-      setCachedMap(map);
-    })();
-  }, [lessons]);
 
   const primaryLesson = useMemo(() => {
     if (summary?.recentLesson?.id) {
@@ -181,7 +163,7 @@ export default function Home() {
         <div className={styles.bannerStats}>
           <span>连续学习：{summary ? `${summary.streak} 天` : '—'}</span>
           <span>待复习：{reviewStats ? reviewStats.due : '—'} 项</span>
-          <span>已缓存课程：{Object.values(cachedMap).filter(Boolean).length}</span>
+          <span>课程总数：{lessons.length}</span>
         </div>
       </section>
 
@@ -221,7 +203,6 @@ export default function Home() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Badge variant="muted">#{lesson.lessonNo}</Badge>
-                  {cachedMap[lesson.id] && <Badge variant="success">已缓存</Badge>}
                   {locked && <div className={styles.lockedBadge}>注册解锁</div>}
                 </div>
                 <h3 className={styles.lessonTitle}>{lesson.title}</h3>
@@ -254,7 +235,7 @@ export default function Home() {
         <Card>
           <h3 className={styles.lessonTitle}>EnglishPod 365 高级体验</h3>
           <p style={{ margin: '6px 0 16px', color: 'var(--color-text-muted)', fontSize: 14 }}>
-            更丰富的课程包、AI 深度批改、离线课程缓存等权益即将上线，敬请期待。
+            更丰富的课程包与 AI 深度批改等权益即将上线，敬请期待。
           </p>
           <Button as="a" href="/account" variant="ghost">了解更多</Button>
         </Card>

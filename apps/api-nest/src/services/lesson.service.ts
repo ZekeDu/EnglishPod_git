@@ -2,6 +2,48 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 
+type TranscriptSegment = {
+  idx?: number;
+  start_sec?: number;
+  end_sec?: number | null;
+  text_en?: string;
+  text_zh?: string;
+};
+
+function asSegmentArray(value: any): any[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeSegmentsForReturn(segments: any[] | null | undefined, duration?: number | null) {
+  if (!Array.isArray(segments)) return [];
+  const totalDuration = Number(duration);
+  const result: TranscriptSegment[] = [];
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i] || {};
+    const start = Number(seg.start_sec);
+    if (!Number.isFinite(start)) continue;
+    const next = segments[i + 1];
+    const nextStart = next ? Number(next.start_sec) : NaN;
+    let end = Number(seg.end_sec);
+    if (!Number.isFinite(end) || end <= start) {
+      if (Number.isFinite(nextStart) && nextStart > start) {
+        end = nextStart;
+      } else if (Number.isFinite(totalDuration) && totalDuration > start) {
+        end = totalDuration;
+      } else {
+        end = start + 3;
+      }
+    }
+    result.push({
+      ...seg,
+      idx: typeof seg.idx === 'number' ? seg.idx : i,
+      start_sec: Number(start.toFixed(2)),
+      end_sec: Number(end.toFixed(2)),
+    });
+  }
+  return result;
+}
+
 type LessonSnapshot = {
   meta: any;
   transcript: any;
@@ -47,7 +89,7 @@ export class LessonService {
 
   async getTranscriptOnly(id: string) {
     const doc = await this.prisma.transcript.findUnique({ where: { lesson_id: String(id) } });
-    return doc ? { segments: doc.segments } : null;
+    return doc ? { segments: normalizeSegmentsForReturn(asSegmentArray(doc.segments)) } : null;
   }
 
   async getVocabOnly(id: string) {
@@ -66,7 +108,9 @@ export class LessonService {
     ]);
     return {
       meta,
-      transcript: transcript ? { segments: transcript.segments } : null,
+      transcript: transcript
+        ? { segments: normalizeSegmentsForReturn(asSegmentArray(transcript.segments), meta?.duration ?? null) }
+        : null,
       vocab: vocab ? { cards: vocab.cards } : null,
       practice: practice ? { cloze: practice.cloze || null, essay: practice.essay || null } : { cloze: null, essay: null },
       podcast: podcast
@@ -106,7 +150,9 @@ export class LessonService {
     ]);
     return {
       meta,
-      transcript: transcript ? { segments: transcript.segments } : null,
+      transcript: transcript
+        ? { segments: normalizeSegmentsForReturn(asSegmentArray(transcript.segments), meta?.duration ?? null) }
+        : null,
       vocab: vocab ? { cards: vocab.cards } : null,
       practice: {
         cloze: practice?.cloze || null,
@@ -285,10 +331,11 @@ export class LessonService {
 
   async saveTranscript(id: string, payload: any) {
     const lesson_id = String(id);
+    const normalizedSegments = normalizeSegmentsForReturn(payload?.segments || []);
     return this.prisma.transcript.upsert({
       where: { lesson_id },
-      create: { lesson_id, segments: payload?.segments || [] },
-      update: { segments: payload?.segments || [] },
+      create: { lesson_id, segments: normalizedSegments },
+      update: { segments: normalizedSegments },
     });
   }
 

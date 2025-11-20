@@ -34,7 +34,6 @@ async function main(){
   const urls = [
     { loc: `${origin}/`, changefreq: 'daily', priority: '1.0' },
     { loc: `${origin}/review`, changefreq: 'daily', priority: '0.8' },
-    { loc: `${origin}/settings/offline`, changefreq: 'weekly', priority: '0.5' },
   ];
   lessons.forEach(l => urls.push({ loc: `${origin}/lesson/${l.id}`, changefreq: 'weekly', priority: '0.7' }));
 

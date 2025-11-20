@@ -6,10 +6,15 @@ function validateTranscript(transcript) {
   if (!Array.isArray(transcript.segments)) errs.push('segments must be array');
   let prev = -Infinity;
   (transcript.segments || []).forEach((s, i) => {
-    if (typeof s.start_sec !== 'number' || typeof s.end_sec !== 'number') {
-      errs.push(`segment[${i}] missing start_sec/end_sec`);
+    if (typeof s.start_sec !== 'number') {
+      errs.push(`segment[${i}] missing start_sec`);
     }
-    if (s.start_sec >= s.end_sec) errs.push(`segment[${i}] start>=end`);
+    if (s.end_sec != null && typeof s.end_sec !== 'number') {
+      errs.push(`segment[${i}] end_sec invalid`);
+    }
+    if (typeof s.start_sec === 'number' && typeof s.end_sec === 'number' && s.start_sec >= s.end_sec) {
+      errs.push(`segment[${i}] start>=end`);
+    }
     if (s.start_sec < prev) errs.push(`segment[${i}] start not monotonic`);
     prev = s.start_sec;
     if (typeof s.text_en !== 'string' || !s.text_en.trim()) errs.push(`segment[${i}] text_en empty`);
@@ -54,4 +59,3 @@ function run(root = path.join(process.cwd(), 'data', 'lessons')) {
 if (require.main === module) run();
 
 module.exports = { validateTranscript, validateLessonDir };
-

@@ -3,12 +3,11 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Badge, Button, Card } from '../../components/ui';
 import { TTSButton } from '../../components/TTSButton';
-import { cacheLesson, clearLessonCache, isLessonCached } from '../../utils/offline';
-import { track } from '../../utils/track';
 import { markLessonProgress } from '../../utils/progress';
 import styles from './lesson.module.css';
 
-type Segment = { idx: number; start_sec: number; end_sec: number; text_en: string; text_zh?: string };
+type Segment = { idx: number; start_sec: number; end_sec?: number | null; text_en: string; text_zh?: string };
+type NormalizedSegment = Segment & { computedEnd: number };
 type VocabCard = { id?: string; word: string; pos?: string; meaning?: string; examples?: string[] };
 type PracticeSummary = { score?: number; submitted_at?: string } | null;
 
@@ -28,7 +27,6 @@ export default function LessonDetail() {
   const [activeSeg, setActiveSeg] = useState<number>(-1);
   const [vocab, setVocab] = useState<VocabCard[]>([]);
   const [podcast, setPodcast] = useState<{ dialogue: any[] } | null>(null);
-  const [cached, setCached] = useState(false);
   const [error, setError] = useState<string>('');
   const [tab, setTab] = useState<typeof TABS[number]>('transcript');
   const [practiceSummary, setPracticeSummary] = useState<PracticeSummary>(null);
@@ -64,9 +62,6 @@ export default function LessonDetail() {
         setError('加载课程数据失败，请稍后再试');
       }
       try {
-        setCached(await isLessonCached(String(id), mainMedia(id)));
-      } catch {}
-      try {
         const sResp = await fetch(`${API}/reviews/collection`, { credentials: 'include' });
         if (sResp.ok) {
           const sj = await sResp.json();
@@ -80,7 +75,7 @@ export default function LessonDetail() {
   const onTimeUpdate = () => {
     if (!audioRef.current) return;
     const t = audioRef.current.currentTime;
-    const seg = segments.find((s) => t >= s.start_sec - 0.05 && t <= s.end_sec + 0.05);
+    const seg = normalizedSegments.find((s) => t >= s.start_sec - 0.05 && t <= s.computedEnd + 0.05);
     if (seg && seg.idx !== activeSeg) setActiveSeg(seg.idx);
     if (!id) return;
     const lastMarked = lastListenMarkRef.current;
@@ -103,21 +98,40 @@ export default function LessonDetail() {
     markLessonProgress(String(id), 'listen', 5);
   };
 
-  const handlePlaySegment = (seg: Segment) => {
+  const handlePlaySegment = (seg: NormalizedSegment) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = seg.start_sec + 0.05;
     audioRef.current.play().catch(() => {});
     setActiveSeg(seg.idx);
     if (id) {
-      const duration = Math.max(1, Math.round(seg.end_sec - seg.start_sec));
+      const duration = Math.max(1, Math.round(seg.computedEnd - seg.start_sec));
       markLessonProgress(String(id), 'listen', duration);
     }
   };
 
+  const normalizedSegments = useMemo<NormalizedSegment[]>(() => {
+    if (!Array.isArray(segments)) return [];
+    const totalDuration = typeof meta?.duration === 'number' ? meta.duration : null;
+    return segments.map((seg, idx) => {
+      const start = typeof seg.start_sec === 'number' ? seg.start_sec : 0;
+      const next = segments[idx + 1];
+      const nextStart = next && typeof next.start_sec === 'number' ? next.start_sec : null;
+      let endCandidate = typeof seg.end_sec === 'number' ? seg.end_sec : null;
+      if (endCandidate == null || !Number.isFinite(endCandidate) || endCandidate <= start) {
+        if (nextStart != null && nextStart > start) endCandidate = nextStart;
+        else if (totalDuration != null && totalDuration > start) endCandidate = totalDuration;
+        else endCandidate = start + 3;
+      }
+      const safeEnd = endCandidate ?? start + 3;
+      const computedEnd = Number(safeEnd.toFixed(2));
+      return { ...seg, computedEnd };
+    });
+  }, [segments, meta?.duration]);
+
   const transcriptList = useMemo(
     () => (
       <ul className={styles.segmentList}>
-        {segments.map((seg) => (
+        {normalizedSegments.map((seg) => (
           <li
             key={seg.idx}
             className={seg.idx === activeSeg ? styles.segmentActive : styles.segmentItem}
@@ -140,7 +154,7 @@ export default function LessonDetail() {
         ))}
       </ul>
     ),
-    [segments, activeSeg],
+    [normalizedSegments, activeSeg],
   );
 
   const normalizeCardId = (item: VocabCard, index: number) => {
@@ -242,32 +256,9 @@ export default function LessonDetail() {
               <track kind="captions" />
             </audio>
             <div className={styles.audioActions}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={async () => {
-                  if (!id) return;
-                  await cacheLesson(String(id), [mainMedia(id)]);
-                  setCached(true);
-                  track('offline_download', { lessonId: id });
-                }}
-                disabled={cached}
-              >
-                {cached ? '已缓存本课' : '缓存用于离线'}
+              <Button variant="secondary" size="sm" as="a" href={`/practice/${id}`}>
+                前往练习
               </Button>
-              {cached && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    if (!id) return;
-                    await clearLessonCache(String(id));
-                    setCached(false);
-                  }}
-                >
-                  清除缓存
-                </Button>
-              )}
             </div>
           </div>
           {((meta?.description && meta.description.trim()) || (meta?.tags || []).length > 0) && (
@@ -304,7 +295,7 @@ export default function LessonDetail() {
           {tab === 'transcript' && (
             <Card>
               <h3 className={styles.sectionHeading}>逐句字幕</h3>
-              {segments.length === 0 ? <p className={styles.muted}>暂无字幕数据</p> : transcriptList}
+              {normalizedSegments.length === 0 ? <p className={styles.muted}>暂无字幕数据</p> : transcriptList}
             </Card>
           )}
           {tab === 'podcast' && (

@@ -37,11 +37,17 @@ function qcTranscript(segments: any[]): { warnings: string[]; errors: string[] }
   }
   let prevEnd = -Infinity;
   segments.forEach((s, i) => {
-    const a = Number(s?.start_sec), b = Number(s?.end_sec);
+    const a = Number(s?.start_sec);
+    const b = Number(s?.end_sec);
     const text = String(s?.text_en || '').trim();
-    if (!Number.isFinite(a) || !Number.isFinite(b)) errors.push(`第 ${i} 段：start_sec/end_sec 无效`);
-    if (a >= b) errors.push(`第 ${i} 段：start>=end`);
+    if (!Number.isFinite(a)) {
+      errors.push(`第 ${i} 段：start_sec 无效`);
+      return;
+    }
+    const hasEnd = Number.isFinite(b);
+    if (hasEnd && a >= b) errors.push(`第 ${i} 段：start>=end`);
     if (a < prevEnd) errors.push(`第 ${i} 段：与上一段重叠（${a.toFixed(2)} < ${prevEnd.toFixed(2)}）`);
+    if (!hasEnd) warnings.push(`第 ${i} 段：缺少 end_sec，将按下一句起点推断`);
     if (!text) errors.push(`第 ${i} 段：text_en 为空`);
     const dur = b - a;
     if (dur > 12) warnings.push(`第 ${i} 段：时长偏长（${dur.toFixed(2)}s）`);
@@ -49,7 +55,7 @@ function qcTranscript(segments: any[]): { warnings: string[]; errors: string[] }
       const gap = a - prevEnd;
       if (gap > 8) warnings.push(`第 ${i} 段：段间间隔较大（${gap.toFixed(2)}s）`);
     }
-    prevEnd = Math.max(prevEnd, b);
+    prevEnd = hasEnd ? Math.max(prevEnd, b) : Math.max(prevEnd, a);
   });
   return { warnings, errors };
 }

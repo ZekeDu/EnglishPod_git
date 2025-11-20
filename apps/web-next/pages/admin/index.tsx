@@ -146,9 +146,6 @@ export default function AdminHome() {
       <Button as="a" href="/admin/settings/models" variant="ghost">
         模型服务管理
       </Button>
-      <Button as="a" href="/settings/offline" variant="ghost">
-        离线管理
-      </Button>
       <Button as="a" href="/admin/import" variant="ghost">
         批量导入
       </Button>

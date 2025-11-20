@@ -158,12 +158,6 @@
   justify-content: center;
 }
 
-.offlineCard {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 @keyframes pulse {
   0% {
     opacity: 0.6;

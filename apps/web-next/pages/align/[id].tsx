@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import styles from './align.module.css';
+import { Button, Card } from '../../components/ui';
 
 const API = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:4000';
 
 type Seg = { idx: number; start_sec: number; end_sec: number; text_en: string };
 
-export default function AlignPage(){
+export default function AlignPage() {
   const router = useRouter();
   const { id } = router.query as { id: string };
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -15,75 +17,142 @@ export default function AlignPage(){
   const [msg, setMsg] = useState<string>('');
   const [dirty, setDirty] = useState<boolean>(false);
 
-  useEffect(() => { if (!id) return; (async()=>{
-    const m = await fetch(`${API}/lessons/${id}`).then(r=>r.json()); setMeta(m.data);
-    const t = await fetch(`${API}/lessons/${id}/transcript`).then(r=>r.json()); setSegs(t.data.segments||[]);
-  })(); }, [id]);
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      const fetchJson = async (url: string) => {
+        const resp = await fetch(url, { credentials: 'include' });
+        if (resp.status === 401) {
+          router.push(`/login?redirect=${encodeURIComponent(`/align/${id}`)}`);
+          throw new Error('unauthorized');
+        }
+        if (!resp.ok) throw new Error('request_failed');
+        return resp.json();
+      };
+      const m = await fetchJson(`${API}/lessons/${id}`);
+      setMeta(m.data);
+      const t = await fetchJson(`${API}/lessons/${id}/transcript`);
+      setSegs(Array.isArray(t?.data?.segments) ? t.data.segments : []);
+    })();
+  }, [id, router]);
 
-  const keyHandler = (e: KeyboardEvent) => {
-    const a = audioRef.current; if (!a) return;
-    if (e.key === 's' || e.key === 'S') {
-      const copy = [...segs]; copy[cur].start_sec = Number(a.currentTime.toFixed(2)); setSegs(copy); setMsg(`Set start of #${cur} -> ${copy[cur].start_sec}s`);
-      setDirty(true);
-    }
-    if (e.key === 'e' || e.key === 'E') {
-      const copy = [...segs]; copy[cur].end_sec = Number(a.currentTime.toFixed(2)); setSegs(copy); setMsg(`Set end of #${cur} -> ${copy[cur].end_sec}s`);
-      setDirty(true);
-    }
-    if (e.key === 'ArrowDown') { setCur(Math.min(cur+1, segs.length-1)); }
-    if (e.key === 'ArrowUp') { setCur(Math.max(cur-1, 0)); }
-  };
-
-  useEffect(() => { window.addEventListener('keydown', keyHandler as any); return () => window.removeEventListener('keydown', keyHandler as any); });
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const a = audioRef.current;
+      if (!a || segs.length === 0) return;
+      if (e.key === 's' || e.key === 'S') {
+        const copy = [...segs];
+        copy[cur].start_sec = Number(a.currentTime.toFixed(2));
+        setSegs(copy);
+        setMsg(`设置 #${cur} 起点 → ${copy[cur].start_sec}s`);
+        setDirty(true);
+      } else if (e.key === 'e' || e.key === 'E') {
+        const copy = [...segs];
+        copy[cur].end_sec = Number(a.currentTime.toFixed(2));
+        setSegs(copy);
+        setMsg(`设置 #${cur} 终点 → ${copy[cur].end_sec}s`);
+        setDirty(true);
+      } else if (e.key === 'ArrowDown') {
+        setCur((prev) => Math.min(prev + 1, segs.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        setCur((prev) => Math.max(prev - 1, 0));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [segs, cur]);
 
   const save = async () => {
-    await fetch(`${API}/lessons/${id}/transcript`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ segments: segs })});
+    await fetch(`${API}/lessons/${id}/transcript`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ segments: segs }),
+    });
     setDirty(false);
-    alert('已保存全部更改');
+    setMsg('已保存全部更改');
   };
 
+  const currentSeg = segs[cur];
+
   return (
-    <main className="container">
-      <header className="app-header">
-        <h1 className="app-title" style={{fontSize:28}}>对齐工具 Alignment</h1>
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.subtitle}>Alignment Tool</p>
+          <h1 className={styles.title}>对齐工具</h1>
+        </div>
+        <p className={styles.hint}>S=设置起点 · E=设置终点 · ↑/↓ 切换句子 · 完成后点击保存</p>
       </header>
-      {meta && (
-        <audio
-          ref={audioRef}
-          controls
-          src={id ? `${API}/media/lesson/${id}/main` : ''}
-          style={{width:'100%'}}
-        />
-      )}
-      <p className="muted">说明：选中句子后，S=设置起点，E=设置终点，↑/↓ 切换句子，完成后点击保存。</p>
-      {msg && <p className="muted">{msg}</p>}
-      <div className="layout">
-        <div className="panel">
-          <div className="panel-hd">句子列表</div>
-          <div className="panel-bd">
-            <ul className="segments">
-              {segs.map(s => (
-                <li key={s.idx} className={s.idx===cur? 'active':''}
-                    onClick={() => { setCur(s.idx); if (audioRef.current) { audioRef.current.currentTime = s.start_sec; } }}>
-                  <span className="seg-time">{s.start_sec.toFixed(2)}–{s.end_sec.toFixed(2)}s</span>
-                  {s.text_en}
+      <Card className={styles.audioCard}>
+        {meta ? (
+          <audio
+            ref={audioRef}
+            controls
+            src={id ? `${API}/media/lesson/${id}/main` : ''}
+            className={styles.audio}
+          />
+        ) : (
+          <p className="muted">正在加载音频…</p>
+        )}
+      </Card>
+      {msg && <div className={styles.status}>{msg}</div>}
+      <div className={styles.layout}>
+        <Card className={styles.panel}>
+          <div className={styles.panelHeader}>句子列表</div>
+          <div className={styles.panelBody}>
+            <ul className={styles.segmentList}>
+              {segs.map((s) => (
+                <li
+                  key={s.idx}
+                  className={`${styles.segmentItem} ${s.idx === cur ? styles.segmentActive : ''}`}
+                  onClick={() => {
+                    setCur(s.idx);
+                    if (audioRef.current) audioRef.current.currentTime = s.start_sec;
+                  }}
+                >
+                  <span className={styles.segmentTime}>
+                    {s.start_sec.toFixed(2)}–{s.end_sec.toFixed(2)}s
+                  </span>
+                  <span>{s.text_en}</span>
                 </li>
               ))}
             </ul>
           </div>
-        </div>
-        <div className="panel">
-          <div className="panel-hd">操作</div>
-          <div className="panel-bd">
-            <p>当前句：#{cur}</p>
-            <div className="toolbar">
-              <button className="button" onClick={() => { const a=audioRef.current; if (a) { a.currentTime = segs[cur].start_sec; a.play(); } }}>从起点播放</button>
-              <button className="button ghost" onClick={() => { const a=audioRef.current; if (a) { a.currentTime = segs[cur].end_sec-0.2; a.play(); } }}>预听终点</button>
-              <button className="button" onClick={save} disabled={!dirty}>保存全部更改</button>
+        </Card>
+        <Card className={styles.panel}>
+          <div className={styles.panelHeader}>操作</div>
+          <div className={styles.panelBody}>
+            <p className={styles.current}>当前句：#{cur}</p>
+            <div className={styles.toolbar}>
+              <Button
+                onClick={() => {
+                  if (!currentSeg || !audioRef.current) return;
+                  audioRef.current.currentTime = currentSeg.start_sec;
+                  audioRef.current.play().catch(() => {});
+                }}
+                block
+              >
+                从起点播放
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  if (!currentSeg || !audioRef.current) return;
+                  audioRef.current.currentTime = Math.max(currentSeg.end_sec - 0.2, currentSeg.start_sec);
+                  audioRef.current.play().catch(() => {});
+                }}
+                block
+              >
+                预听终点
+              </Button>
+              <Button onClick={save} disabled={!dirty || segs.length === 0} block>
+                保存全部更改
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
-    </main>
+    </div>
   );
 }
