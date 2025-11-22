@@ -6,7 +6,7 @@ import { AppSettingService } from '../services/app-setting.service';
 
 @Controller('tts')
 export class TTSController {
-  constructor(private readonly settings: AppSettingService) {}
+  constructor(private readonly settings: AppSettingService) { }
 
   @Get()
   async gen(@Query('text') text = '', @Query('lang') lang = 'en', @Query('voice') voice = '', @Query('rate') rate = '1.0') {
@@ -23,6 +23,21 @@ export class TTSController {
         error: result.error,
       },
     };
+  }
+
+  @Get('stream')
+  async stream(@Query('text') text = '', @Query('lang') lang = 'en', @Query('voice') voice = '', @Query('rate') rate = '1.0', @Res() res: Response) {
+    const modelsCfg = await this.settings.get<any>('model-config', null);
+    try {
+      const result = await ensureTTSFile(text, { lang, voice, rate }, modelsCfg);
+      const p = getTTSAudioPath(result.key);
+      if (!fs.existsSync(p)) return res.status(404).end();
+      res.setHeader('Content-Type', 'audio/wav');
+      fs.createReadStream(p).pipe(res);
+    } catch (e) {
+      console.error('TTS stream error:', e);
+      res.status(500).end();
+    }
   }
 
   @Get('file/:name')
