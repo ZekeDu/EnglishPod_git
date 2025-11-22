@@ -32,7 +32,15 @@ export class TTSController {
       const result = await ensureTTSFile(text, { lang, voice, rate }, modelsCfg);
       const p = getTTSAudioPath(result.key);
       if (!fs.existsSync(p)) return res.status(404).end();
-      res.setHeader('Content-Type', 'audio/wav');
+
+      // Dynamic Content-Type based on provider
+      // Azure returns MP3, Aliyun returns WAV
+      if (result.provider === 'azure') {
+        res.setHeader('Content-Type', 'audio/mpeg');
+      } else {
+        res.setHeader('Content-Type', 'audio/wav');
+      }
+
       fs.createReadStream(p).pipe(res);
     } catch (e) {
       console.error('TTS stream error:', e);
