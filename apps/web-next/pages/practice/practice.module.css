@@ -1,22 +1,26 @@
-
 .page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-bottom: 140px;
+  gap: 32px;
+  padding-bottom: 160px;
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 12px 0;
 }
 
 .heading {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--color-text);
+  line-height: 1.2;
 }
 
 .subtitle {
@@ -26,22 +30,32 @@
 }
 
 .notice {
-  padding: 14px;
+  padding: 16px;
   border-radius: 16px;
-  background: rgba(20,184,166,0.12);
+  background: rgba(20, 184, 166, 0.1);
   font-size: 14px;
   color: var(--color-text);
+  border: 1px solid rgba(20, 184, 166, 0.2);
 }
 
 .tabRow {
+  position: sticky;
+  top: 16px;
   display: grid;
   grid-auto-flow: column;
   gap: 8px;
   overflow-x: auto;
-  padding: 6px 2px;
-  background: rgba(255,255,255,0.95);
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  z-index: 30;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  justify-content: center;
+  width: fit-content;
+  margin: 0 auto;
 }
 
 .tabRow::-webkit-scrollbar {
@@ -49,82 +63,120 @@
 }
 
 .tabButton {
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 999px;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
   font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabButton:hover {
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .tabButtonActive {
-  padding: 10px 20px;
+  padding: 10px 28px;
   border-radius: 999px;
   border: none;
-  background: rgba(14,165,233,0.18);
+  background: #ffffff;
   color: var(--color-primary);
   font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .clozePassage {
-  background: var(--color-surface);
-  border-radius: 20px;
-  border: 1px solid rgba(15,23,42,0.06);
-  box-shadow: var(--elev-1);
-  padding: 20px;
-  font-size: 16px;
-  line-height: 1.7;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--elev-2);
+  padding: 32px;
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--color-text);
 }
 
 .clozePassage select {
-  min-width: 100px;
-  padding: 6px 8px;
+  min-width: 120px;
+  padding: 8px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15,23,42,0.12);
-  background: rgba(14,165,233,0.1);
-  font-size: 15px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  margin: 0 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.clozePassage select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
 .resultCard {
-  background: var(--color-surface);
-  border-radius: 18px;
-  border: 1px solid rgba(15,23,42,0.08);
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 24px;
   box-shadow: var(--elev-1);
 }
 
 .essayField {
   width: 100%;
-  border-radius: 16px;
-  border: 1px solid rgba(15,23,42,0.08);
-  padding: 16px;
-  min-height: 180px;
-  font-size: 15px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  min-height: 240px;
+  font-size: 16px;
   line-height: 1.6;
   resize: vertical;
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+  color: var(--color-text);
+}
+
+.essayField:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
 .feedbackCard {
-  background: var(--color-surface);
-  border-radius: 20px;
-  border: 1px solid rgba(15,23,42,0.06);
-  padding: 18px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  padding: 24px;
   box-shadow: var(--elev-1);
   display: grid;
-  gap: 12px;
+  gap: 20px;
 }
 
 .feedbackTitle {
-  margin: 0;
+  margin: 0 0 8px;
   font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text);
 }
 
 .feedbackText {
   margin: 0;
   color: var(--color-text-muted);
-  line-height: 1.6;
-  font-size: 14px;
+  line-height: 1.7;
+  font-size: 15px;
   white-space: pre-line;
 }
 
@@ -132,28 +184,31 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 64px;
-  background: rgba(255,255,255,0.94);
-  border-top: 1px solid rgba(15,23,42,0.08);
-  box-shadow: 0 -10px 26px rgba(15,23,42,0.12);
-  padding: 16px;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
+  padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
   display: flex;
-  gap: 12px;
+  gap: 16px;
   justify-content: center;
-  backdrop-filter: blur(16px);
-  z-index: 30;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 40;
 }
 
 .wordCount {
   text-align: right;
   font-size: 13px;
   color: var(--color-text-muted);
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .historyCard {
   background: var(--color-surface);
   border-radius: 18px;
-  border: 1px solid rgba(15,23,42,0.06);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   padding: 18px;
   box-shadow: var(--elev-1);
 }
@@ -170,19 +225,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--color-text);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
 }
 
 .historyMuted {
   color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 @media (min-width: 960px) {
   .actionBar {
-    max-width: 960px;
+    max-width: 600px;
     margin: 0 auto;
-    border-radius: 24px 24px 0 0;
+    border-radius: 999px;
     bottom: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    padding: 12px;
   }
 }

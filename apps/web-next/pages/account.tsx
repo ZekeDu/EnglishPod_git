@@ -117,9 +117,11 @@ export default function AccountPage() {
           <span>{me.role || 'user'}</span>
         </div>
         {me.role === 'admin' && (
-          <Button as="a" href="/admin" variant="secondary" size="sm">
-            进入管理后台
-          </Button>
+          <div className={styles.adminActions}>
+            <Button as="a" href="/admin" block>
+              进入管理后台
+            </Button>
+          </div>
         )}
       </Card>
 

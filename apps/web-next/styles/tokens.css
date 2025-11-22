@@ -1,51 +1,82 @@
 :root {
-  /* colors */
-  --color-bg: #f3f4f6;
+  /* --- Premium Color Palette --- */
+  /* Brand Colors */
+  --color-primary: #0ea5e9; /* Sky Blue */
+  --color-primary-dark: #0284c7;
+  --color-primary-light: #e0f2fe;
+  
+  --color-accent: #14b8a6; /* Teal */
+  --color-accent-dark: #0f766e;
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  --gradient-accent: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 100%);
+  --gradient-bg: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+
+  /* Neutral / Surface */
+  --color-bg: #f8fafc;
   --color-surface: #ffffff;
-  --color-surface-soft: #f8fafc;
-  --color-text: #111827;
-  --color-text-muted: #6b7280;
-  --color-border: #e5e7eb;
-  --color-primary: #0ea5e9;
-  --color-primary-press: #0284c7;
-  --color-accent: #14b8a6;
+  --color-surface-glass: rgba(255, 255, 255, 0.7);
+  --color-border: rgba(226, 232, 240, 0.8);
+  
+  /* Text */
+  --color-text: #0f172a;       /* Slate 900 */
+  --color-text-muted: #64748b; /* Slate 500 */
+  --color-text-light: #94a3b8; /* Slate 400 */
+
+  /* Functional */
   --color-success: #10b981;
   --color-warn: #f59e0b;
-  --color-error: #f87171;
+  --color-error: #ef4444;
 
-  /* radii */
+  /* --- Effects --- */
+  /* Radii */
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-md: 16px; /* More rounded for modern feel */
+  --radius-lg: 24px;
+  --radius-full: 9999px;
 
-  /* shadows */
-  --elev-1: 0 4px 16px rgba(0, 0, 0, 0.06);
-  --elev-2: 0 10px 30px rgba(0, 0, 0, 0.08);
+  /* Shadows (Diffuse & Soft) */
+  --elev-1: 0 4px 20px -2px rgba(14, 165, 233, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.02);
+  --elev-2: 0 12px 32px -4px rgba(14, 165, 233, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+  --elev-inner: inset 0 2px 4px 0 rgba(255, 255, 255, 0.6);
 
-  /* spacing */
+  /* Glassmorphism */
+  --glass-blur: blur(16px);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
+
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 20px;
   --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
 
-  /* typography */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
-  --text-xs: 12px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 18px;
-  --text-xl: 22px;
-  --text-2xl: 28px;
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Animations */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme="dark"] {
-  --color-bg: #0b1120;
-  --color-surface: #111827;
-  --color-text: #e5e7eb;
-  --color-text-muted: #9ca3af;
-  --color-border: #1f2937;
-  --elev-1: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --elev-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --color-bg: #0f172a; /* Slate 900 */
+  --color-surface: #1e293b;
+  --color-surface-glass: rgba(30, 41, 59, 0.7);
+  --color-border: rgba(51, 65, 85, 0.5);
+  
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  
+  --gradient-bg: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+  --gradient-surface: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%);
+  
+  --elev-1: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 12px 32px -4px rgba(0, 0, 0, 0.5);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
 }

@@ -42,12 +42,12 @@ export default function AdminImportPage() {
         }
         if (Array.isArray(o.overwrite)) setOverwrite(o.overwrite);
       }
-    } catch {}
+    } catch { }
   }, []);
   useEffect(() => {
     try {
       localStorage.setItem('ep_import_opts', JSON.stringify({ mode, autoPublish, overwrite }));
-    } catch {}
+    } catch { }
   }, [mode, autoPublish, overwrite]);
 
   // 校验模式不允许自动发布
@@ -61,7 +61,7 @@ export default function AdminImportPage() {
       try {
         const m = await fetch(`${API}/me`, { credentials: 'include' }).then((r) => r.json());
         setMe(m.data);
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -110,7 +110,7 @@ export default function AdminImportPage() {
         let payload: any = null;
         try {
           payload = await res.json();
-        } catch {}
+        } catch { }
         if (!res.ok) {
           const errMsg =
             payload?.data?.error || payload?.error || payload?.message || '导入失败';
@@ -145,18 +145,20 @@ export default function AdminImportPage() {
       ? '正在校验...'
       : '正在导入...'
     : mode === 'validate'
-    ? '开始校验'
-    : '开始导入';
+      ? '开始校验'
+      : '开始导入';
 
   if (!me) return <main className="container"><p>未登录，请先 <a href="/login">登录</a></p></main>;
   if (me.role !== 'admin') return <main className="container"><p>无权限，需要管理员账户。</p></main>;
 
   return (
     <main className="container">
-      <header className="app-header">
-        <a className="button ghost" href="/admin">返回管理</a>
-        <h1 className="app-title" style={{ fontSize: 28 }}>批量导入（lessons.zip）</h1>
-        <span />
+      <header className="app-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+          <a className="button ghost" href="/admin">返回管理</a>
+          <span />
+        </div>
+        <h1 className="app-title" style={{ fontSize: 28, margin: 0 }}>批量导入（lessons.zip）</h1>
       </header>
 
       {msg && <p className="inline-note" style={{ color: msg.includes('失败') ? 'crimson' : '#16a34a' }}>{msg}</p>}

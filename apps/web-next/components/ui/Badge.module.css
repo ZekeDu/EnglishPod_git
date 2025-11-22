@@ -5,18 +5,22 @@
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  line-height: 1.2;
-  background: rgba(14, 165, 233, 0.14);
+  line-height: 1;
+  background: rgba(14, 165, 233, 0.1);
   color: var(--color-primary);
-  gap: 6px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .muted {
-  background: rgba(15, 23, 42, 0.08);
-  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-muted);
+  border-color: rgba(0, 0, 0, 0.05);
 }
 
 .success {
-  background: rgba(20, 184, 166, 0.16);
+  background: rgba(20, 184, 166, 0.1);
   color: var(--color-accent);
+  border-color: rgba(20, 184, 166, 0.2);
 }

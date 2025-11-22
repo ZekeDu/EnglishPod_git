@@ -68,7 +68,7 @@ export default function LessonDetail() {
           const ids: string[] = Array.isArray(sj?.data?.card_ids) ? sj.data.card_ids : [];
           setSrsSet(new Set(ids.map((x: string) => x.toLowerCase())));
         }
-      } catch {}
+      } catch { }
     })();
   }, [id]);
 
@@ -101,7 +101,7 @@ export default function LessonDetail() {
   const handlePlaySegment = (seg: NormalizedSegment) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = seg.start_sec + 0.05;
-    audioRef.current.play().catch(() => {});
+    audioRef.current.play().catch(() => { });
     setActiveSeg(seg.idx);
     if (id) {
       const duration = Math.max(1, Math.round(seg.computedEnd - seg.start_sec));
@@ -223,9 +223,16 @@ export default function LessonDetail() {
       </Head>
       <div className={styles.page}>
         <header className={styles.header}>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
-            返回
-          </Button>
+          <div className={styles.headerTop}>
+            <Button variant="ghost" size="sm" onClick={() => router.push('/')}>
+              返回
+            </Button>
+            <div className={styles.headerAction}>
+              <Button variant="ghost" size="sm">
+                收藏
+              </Button>
+            </div>
+          </div>
           <div className={styles.headerInfo}>
             <Badge variant="muted">{meta?.level || '未分类'}</Badge>
             <h1 className={styles.title}>{meta?.title || '加载中…'}</h1>
@@ -233,11 +240,6 @@ export default function LessonDetail() {
               {meta?.lesson_no ? `Lesson ${meta.lesson_no}` : ''}
               {meta?.duration ? ` · ${Math.round(meta.duration / 60)} 分钟` : ''}
             </p>
-          </div>
-          <div className={styles.headerAction}>
-            <Button variant="ghost" size="sm">
-              收藏
-            </Button>
           </div>
         </header>
 
@@ -255,11 +257,7 @@ export default function LessonDetail() {
             >
               <track kind="captions" />
             </audio>
-            <div className={styles.audioActions}>
-              <Button variant="secondary" size="sm" as="a" href={`/practice/${id}`}>
-                前往练习
-              </Button>
-            </div>
+
           </div>
           {((meta?.description && meta.description.trim()) || (meta?.tags || []).length > 0) && (
             <div className={styles.heroSummary}>
@@ -357,14 +355,16 @@ export default function LessonDetail() {
                           ))}
                         </ul>
                       )}
-                      <Button
-                        variant={inReview ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => toggleReview(item, index)}
-                        disabled={loadingCard === cardId}
-                      >
-                        {inReview ? '移出复习' : '加入复习'}
-                      </Button>
+                      <div className={styles.vocabFooter}>
+                        <Button
+                          variant={inReview ? 'primary' : 'ghost'}
+                          size="sm"
+                          onClick={() => toggleReview(item, index)}
+                          disabled={loadingCard === cardId}
+                        >
+                          {inReview ? '移出复习' : '加入复习'}
+                        </Button>
+                      </div>
                     </Card>
                   );
                 })

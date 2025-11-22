@@ -1,4 +1,8 @@
-html, body { height: 100%; }
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -13,8 +17,14 @@ body {
   box-sizing: border-box;
 }
 
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; }
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
 
 .sr-only {
   position: absolute;
@@ -31,7 +41,9 @@ button { font-family: inherit; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(14,165,233,0.08) 0%, rgba(20,184,166,0.05) 60%, rgba(243,244,246,0.8) 100%);
+  background: var(--gradient-bg);
+  background-attachment: fixed;
+  /* Parallax-like feel */
 }
 
 .page-inner {

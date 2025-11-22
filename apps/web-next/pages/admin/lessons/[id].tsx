@@ -11,8 +11,8 @@ export default function AdminLessonEdit() {
   const [me, setMe] = useState<any>(null);
   const [pkg, setPkg] = useState<any>(null);
   const [msg, setMsg] = useState('');
-  const [versions, setVersions] = useState<{file:string;version:number;ts:string;reason?:string}[]>([]);
-  const [qc, setQc] = useState<{warnings:string[];errors:string[]}|null>(null);
+  const [versions, setVersions] = useState<{ file: string; version: number; ts: string; reason?: string }[]>([]);
+  const [qc, setQc] = useState<{ warnings: string[]; errors: string[] } | null>(null);
   const [showTranscriptRaw, setShowTranscriptRaw] = useState(false);
   const [showVocabRaw, setShowVocabRaw] = useState(false);
   const [showPracticeRaw, setShowPracticeRaw] = useState(false);
@@ -26,37 +26,41 @@ export default function AdminLessonEdit() {
     { key: 'practice', label: '练习' },
   ];
 
-  useEffect(() => { (async () => {
-    try { const m = await fetch(`${API}/me`, { credentials: 'include' }).then(r=>r.json()); setMe(m.data); } catch {}
-  })(); }, []);
+  useEffect(() => {
+    (async () => {
+      try { const m = await fetch(`${API}/me`, { credentials: 'include' }).then(r => r.json()); setMe(m.data); } catch { }
+    })();
+  }, []);
 
-  useEffect(() => { if (!id) return; (async () => {
-    setMsg('');
-    try {
-      const r = await fetch(`${API}/admin/lessons/${id}`, { credentials: 'include' });
-      const j = await r.json();
-      if (r.ok) {
-        setPkg(j.data);
-        setShowTranscriptRaw(false);
-        setShowVocabRaw(false);
-        setShowPracticeRaw(false);
-      } else setMsg(j?.data?.error || '加载失败');
-    } catch { setMsg('加载失败'); }
-    try {
-      const vr = await fetch(`${API}/admin/lessons/${id}/versions`, { credentials:'include' });
-      const vj = await vr.json();
-      if (vr.ok) setVersions(vj.data?.versions || []);
-    } catch {}
-    try {
-      const qr = await fetch(`${API}/admin/lessons/${id}/qc`, { credentials:'include' });
-      const qj = await qr.json();
-      if (qr.ok) setQc(qj.data);
-    } catch {}
-  })(); }, [id]);
+  useEffect(() => {
+    if (!id) return; (async () => {
+      setMsg('');
+      try {
+        const r = await fetch(`${API}/admin/lessons/${id}`, { credentials: 'include' });
+        const j = await r.json();
+        if (r.ok) {
+          setPkg(j.data);
+          setShowTranscriptRaw(false);
+          setShowVocabRaw(false);
+          setShowPracticeRaw(false);
+        } else setMsg(j?.data?.error || '加载失败');
+      } catch { setMsg('加载失败'); }
+      try {
+        const vr = await fetch(`${API}/admin/lessons/${id}/versions`, { credentials: 'include' });
+        const vj = await vr.json();
+        if (vr.ok) setVersions(vj.data?.versions || []);
+      } catch { }
+      try {
+        const qr = await fetch(`${API}/admin/lessons/${id}/qc`, { credentials: 'include' });
+        const qj = await qr.json();
+        if (qr.ok) setQc(qj.data);
+      } catch { }
+    })();
+  }, [id]);
 
   const save = async (path: string, body: any) => {
     setMsg('');
-    const r = await fetch(`${API}/admin/lessons/${id}/${path}`, { method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body) });
+    const r = await fetch(`${API}/admin/lessons/${id}/${path}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
     const j = await r.json();
     if (!r.ok) { setMsg(j?.data?.error || '保存失败'); return j; }
     if (path === 'transcript') {
@@ -128,9 +132,25 @@ export default function AdminLessonEdit() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Button as="a" href="/admin" variant="ghost" size="sm">
-          返回列表
-        </Button>
+        <div className={styles.headerTop}>
+          <Button as="a" href="/admin" variant="ghost" size="sm">
+            返回列表
+          </Button>
+          <div className={styles.headerActions}>
+            <Button as="a" href={`/lesson/${id}`} variant="ghost" size="sm" target="_blank" rel="noreferrer">
+              预览课程页
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              style={{ color: 'crimson', borderColor: 'rgba(220,38,38,0.4)' }}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? '正在删除…' : '删除课程'}
+            </Button>
+          </div>
+        </div>
         <div className={styles.headerInfo}>
           <div className={styles.inlineActions}>
             <Badge variant="muted">课程 #{id}</Badge>
@@ -138,20 +158,6 @@ export default function AdminLessonEdit() {
           </div>
           <h1 className={styles.heading}>{pkg?.meta?.title || '编辑课程'}</h1>
           <p className="muted">维护课程基础信息、字幕、词汇与练习内容</p>
-        </div>
-        <div className={styles.headerActions}>
-          <Button as="a" href={`/lesson/${id}`} variant="ghost" size="sm" target="_blank" rel="noreferrer">
-            预览课程页
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            style={{ color: 'crimson', borderColor: 'rgba(220,38,38,0.4)' }}
-            onClick={handleDelete}
-            disabled={deleting}
-          >
-            {deleting ? '正在删除…' : '删除课程'}
-          </Button>
         </div>
       </header>
 
@@ -209,7 +215,7 @@ export default function AdminLessonEdit() {
                           let dur = 0;
                           try {
                             dur = await getAudioDuration(URL.createObjectURL(f));
-                          } catch {}
+                          } catch { }
                           const resp = await fetch(`${API}/admin/lessons/${id}/audio/attach`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -223,7 +229,7 @@ export default function AdminLessonEdit() {
                             const mr = await fetch(`${API}/admin/lessons/${id}`, { credentials: 'include' });
                             const mj = await mr.json();
                             if (mr.ok) setPkg(mj.data);
-                          } catch {}
+                          } catch { }
                         } catch {
                           alert('上传失败');
                         }
@@ -263,7 +269,7 @@ export default function AdminLessonEdit() {
                           const r = await fetch(`${API}/admin/lessons/${id}/qc`, { credentials: 'include' });
                           const j = await r.json();
                           if (r.ok) setQc(j.data);
-                        } catch {}
+                        } catch { }
                       }
                     }}
                   />
@@ -289,7 +295,7 @@ export default function AdminLessonEdit() {
                             const r = await fetch(`${API}/admin/lessons/${id}/qc`, { credentials: 'include' });
                             const j = await r.json();
                             if (r.ok) setQc(j.data);
-                          } catch {}
+                          } catch { }
                         }}
                       >
                         刷新质检
@@ -417,7 +423,7 @@ export default function AdminLessonEdit() {
                           let dur = 0;
                           try {
                             dur = await getAudioDuration(URL.createObjectURL(f));
-                          } catch {}
+                          } catch { }
                           const resp = await fetch(`${API}/admin/lessons/${id}/audio/attach`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -431,7 +437,7 @@ export default function AdminLessonEdit() {
                             const mr = await fetch(`${API}/admin/lessons/${id}`, { credentials: 'include' });
                             const mj = await mr.json();
                             if (mr.ok) setPkg(mj.data);
-                          } catch {}
+                          } catch { }
                         } catch {
                           alert('上传失败');
                         }
@@ -535,7 +541,7 @@ export default function AdminLessonEdit() {
   );
 }
 
-function MetaForm({ meta, onSave }: { meta: any, onSave: (m:any)=>void }){
+function MetaForm({ meta, onSave }: { meta: any, onSave: (m: any) => void }) {
   const [m, setM] = useState<any>(meta);
   const [tagsInput, setTagsInput] = useState<string>((meta?.tags || []).join(', '));
   // 当上层 pkg.meta 变化（例如上传音频后自动写入 audio_url）时，同步到本地表单状态
@@ -824,7 +830,7 @@ function VocabEditor({
             meaning: meaningValue,
             pos: String(pos || ''),
             examplesText,
-            extra: { ...extra, ...( _definition ? { definition: _definition } : {}) },
+            extra: { ...extra, ...(_definition ? { definition: _definition } : {}) },
           };
         }),
       );
@@ -890,8 +896,8 @@ function VocabEditor({
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
-                const { definition: _legacyDefinition, ...restExtra } = card.extra || {};
-                void _legacyDefinition;
+      const { definition: _legacyDefinition, ...restExtra } = card.extra || {};
+      void _legacyDefinition;
       const payload: any = {
         id,
         word,

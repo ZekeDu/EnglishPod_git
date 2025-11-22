@@ -36,11 +36,11 @@ export default function ReviewPage() {
   const cur = items[index];
   const stats: Stats = statsResp?.data
     ? {
-        total: statsResp.data.total,
-        mastered: statsResp.data.mastered,
-        learning: statsResp.data.learning,
-        due: statsResp.data.due,
-      }
+      total: statsResp.data.total,
+      mastered: statsResp.data.mastered,
+      learning: statsResp.data.learning,
+      due: statsResp.data.due,
+    }
     : null;
   const history: History = historyResp?.data?.days || null;
 
@@ -172,10 +172,10 @@ export default function ReviewPage() {
             </div>
           )}
           <div className={styles.actions}>
-            <button onClick={() => handleRate(0)}>Again</button>
-            <button onClick={() => handleRate(1)}>Hard</button>
-            <button onClick={() => handleRate(3)} className="primary">Good</button>
-            <button onClick={() => handleRate(4)} className="primary">Easy</button>
+            <Button onClick={() => handleRate(0)} variant="secondary">Again</Button>
+            <Button onClick={() => handleRate(1)} variant="secondary">Hard</Button>
+            <Button onClick={() => handleRate(3)} variant="primary">Good</Button>
+            <Button onClick={() => handleRate(4)} variant="primary">Easy</Button>
           </div>
         </Card>
       ) : (

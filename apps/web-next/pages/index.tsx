@@ -108,8 +108,8 @@ export default function Home() {
   const continueHrefEffective = primaryLesson && isLessonUnlocked(primaryLesson.id)
     ? `/lesson/${primaryLesson.id}`
     : primaryLesson
-    ? `/login?redirect=${encodeURIComponent(`/lesson/${primaryLesson.id}`)}`
-    : '/lesson/1';
+      ? `/login?redirect=${encodeURIComponent(`/lesson/${primaryLesson.id}`)}`
+      : '/lesson/1';
   const continueDesc = primaryLesson
     ? primaryLesson.lessonNo
       ? `继续学习 Lesson ${primaryLesson.lessonNo}`
@@ -151,34 +151,41 @@ export default function Home() {
 
       <section className={styles.banner}>
         <div className={styles.bannerContent}>
-          <h2 className={styles.bannerTitle}>每日 20 分钟，练就地道表达</h2>
-          <p className={styles.bannerSubtitle}>
-            课程、练习、复习一站式搞定。现在就继续上一节课吧！
+          <p className={styles.bannerSubtitle} style={{ marginBottom: 8, opacity: 0.9, fontWeight: 600 }}>
+            {isAuthed ? `Ready to continue, ${profileName}?` : '欢迎来到 EnglishPod 365'}
           </p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Button as="a" href={continueHref}>{continueCta}</Button>
-            <Button as="a" href="/lesson" variant="ghost">浏览课程</Button>
+          <h2 className={styles.bannerTitle}>
+            {primaryLesson?.title || 'Start your journey'}
+          </h2>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
+            <Button as="a" href={continueHref} className={styles.bannerBtn}>
+              {continueCta}
+            </Button>
+            {reviewStats && reviewStats.due > 0 && (
+              <Button as="a" href="/review" className={styles.bannerBtnSecondary}>
+                单词复习
+              </Button>
+            )}
+            {!isAuthed && (
+              <Button as="a" href="/lesson" variant="ghost" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
+                浏览课程
+              </Button>
+            )}
           </div>
         </div>
         <div className={styles.bannerStats}>
-          <span>连续学习：{summary ? `${summary.streak} 天` : '—'}</span>
-          <span>待复习：{reviewStats ? reviewStats.due : '—'} 项</span>
-          <span>课程总数：{lessons.length}</span>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>今日任务</div>
-        <div className={styles.horizontal}>
-          {taskCards.map((card) => (
-            <Card key={card.title} className={styles.sliderCard}>
-              <div>
-                <h3 className={styles.lessonTitle}>{card.title}</h3>
-                <p style={{ margin: '6px 0 16px', color: 'var(--color-text-muted)', fontSize: 14 }}>{card.desc}</p>
-              </div>
-              <Button as="a" href={card.href} size="sm">{card.cta}</Button>
-            </Card>
-          ))}
+          <div className={styles.statItem}>
+            <span className={styles.statValue}>{summary ? summary.streak : 0}</span>
+            <span className={styles.statLabel}>Day Streak</span>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statValue}>{reviewStats ? reviewStats.due : 0}</span>
+            <span className={styles.statLabel}>To Review</span>
+          </div>
+          <div className={styles.statItem}>
+            <span className={styles.statValue}>{lessons.length}</span>
+            <span className={styles.statLabel}>Lessons</span>
+          </div>
         </div>
       </section>
 

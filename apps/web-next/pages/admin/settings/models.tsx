@@ -13,11 +13,11 @@ export default function ModelsIndex() {
       try {
         const m = await fetch(`${API}/me`, { credentials: 'include' }).then((r) => r.json());
         setMe(m.data);
-      } catch {}
+      } catch { }
       try {
         const c = await fetch(`${API}/admin/model-services`, { credentials: 'include' }).then((r) => r.json());
         setCfg(c.data || {});
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -45,14 +45,16 @@ export default function ModelsIndex() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <Button as="a" href="/admin" variant="ghost" size="sm">
-          返回管理
-        </Button>
+        <div className={styles.headerTop}>
+          <Button as="a" href="/admin" variant="ghost" size="sm">
+            返回管理
+          </Button>
+          <Badge variant="muted">Beta</Badge>
+        </div>
         <div className={styles.headerInfo}>
           <h1 className={styles.title}>模型服务管理</h1>
           <p className={styles.subtitle}>统一管理语音合成与评分服务的接入状态</p>
         </div>
-        <Badge variant="muted">Beta</Badge>
       </header>
 
       <section className={styles.grid}>

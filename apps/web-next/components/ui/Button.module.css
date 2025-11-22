@@ -3,40 +3,57 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  /* Pill shape is more modern */
   border: none;
-  padding: 12px 18px;
+  padding: 12px 24px;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
+  letter-spacing: 0.01em;
   line-height: 1.2;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  box-shadow: var(--elev-1);
+  transition: all 0.2s var(--ease-spring);
+  position: relative;
+  overflow: hidden;
+}
+
+.root:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--elev-2);
 }
 
 .root:active {
-  transform: translateY(1px);
+  transform: scale(0.96) translateY(0);
 }
 
 .primary {
-  background: var(--color-primary);
+  background: var(--gradient-primary);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.primary:active {
-  background: var(--color-primary-press);
+.primary:hover {
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
 }
 
 .secondary {
-  background: var(--color-accent);
+  background: var(--gradient-accent);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
 }
 
 .ghost {
-  background: rgba(14, 165, 233, 0.12);
-  color: var(--color-primary);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  color: var(--color-primary-dark);
+  border: 1px solid rgba(14, 165, 233, 0.1);
   box-shadow: none;
+}
+
+.ghost:hover {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(14, 165, 233, 0.2);
 }
 
 .link {
@@ -44,11 +61,18 @@
   color: var(--color-primary);
   box-shadow: none;
   padding: 8px 0;
+  border-radius: 0;
+}
+
+.link:hover {
+  transform: none;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .small {
   padding: 8px 16px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .block {

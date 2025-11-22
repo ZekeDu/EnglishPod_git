@@ -1,9 +1,8 @@
 .page {
   min-height: 100vh;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, rgba(14,165,233,0.12), rgba(20,184,166,0.08));
   padding: 32px 20px 48px;
 }
 
@@ -11,7 +10,7 @@
   width: 100%;
   max-width: 980px;
   display: grid;
-  gap: 32px;
+  gap: 48px;
   grid-template-columns: 1fr;
   align-items: center;
 }
@@ -19,7 +18,7 @@
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   color: var(--color-text);
   text-align: center;
 }
@@ -29,89 +28,103 @@
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: var(--color-primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .title {
   margin: 0;
-  font-size: 32px;
+  font-size: 48px;
   font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   color: var(--color-text-muted);
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .card {
-  background: rgba(255,255,255,0.95);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 32px;
   box-shadow: var(--elev-2);
-  padding: 28px;
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
 }
 
 .toggleBar {
   display: inline-flex;
   padding: 6px;
   border-radius: 999px;
-  background: rgba(14,165,233,0.12);
+  background: rgba(0, 0, 0, 0.04);
   gap: 6px;
+  align-self: center;
 }
 
 .toggleButton {
   border: none;
   border-radius: 999px;
-  padding: 8px 18px;
+  padding: 10px 24px;
   font-size: 14px;
   font-weight: 600;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: all 0.3s var(--ease-spring);
 }
 
 .toggleActive {
   background: #ffffff;
   color: var(--color-primary);
-  box-shadow: 0 4px 16px rgba(14,165,233,0.18);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-weight: 700;
 }
 
 .form {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text);
+  margin-left: 4px;
 }
 
 .input {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid rgba(15,23,42,0.12);
-  padding: 12px 14px;
-  font-size: 15px;
-  background: rgba(255,255,255,0.96);
-  transition: border 0.18s ease, box-shadow 0.18s ease;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 16px 20px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+  color: var(--color-text);
 }
 
 .input:focus {
   outline: none;
-  border-color: rgba(14,165,233,0.6);
-  box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+  border-color: var(--color-primary);
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
 .captchaRow {
@@ -121,43 +134,46 @@
 }
 
 .captchaImage {
-  max-width: 200px;
-  border: 1px solid rgba(15,23,42,0.12);
+  max-width: 160px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
 }
 
 .footerNote {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-muted);
   text-align: center;
+  margin-top: 16px;
 }
 
 .message {
-  min-height: 20px;
-  font-size: 13px;
+  min-height: 24px;
+  font-size: 14px;
   text-align: center;
   color: var(--color-text-muted);
+  font-weight: 500;
 }
 
 .messageError {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .hint {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-muted);
   line-height: 1.5;
+  padding: 0 4px;
 }
 
 @media (min-width: 960px) {
   .container {
-    grid-template-columns: 1.1fr 0.9fr;
-    align-items: stretch;
+    grid-template-columns: 1fr 480px;
+    gap: 80px;
   }
+
   .hero {
     align-items: flex-start;
     text-align: left;
-    padding-left: 24px;
   }
 }
