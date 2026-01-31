@@ -21,14 +21,15 @@ import { AppSettingService } from '../services/app-setting.service';
 import { LessonAudioService } from '../services/lesson-audio.service';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 import { AdminGuard } from '../guards/admin.guard';
+import { CsrfMiddleware } from '../middleware/csrf.middleware';
 
 @Module({
   imports: [],
   controllers: [LessonsController, VocabController, ReviewsController, ProgressController, PodcastController, PracticeController, AuthController, SubscriptionController, AdminController, UploadController, TTSController, ModelConfigController, MediaController],
-  providers: [PrismaService, AuthService, LessonService, ProgressService, PracticeService, AppSettingService, LessonAudioService, AdminGuard],
+  providers: [PrismaService, AuthService, LessonService, ProgressService, PracticeService, AppSettingService, LessonAudioService, AdminGuard, CsrfMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthMiddleware).forRoutes('*');
+    consumer.apply(CsrfMiddleware, AuthMiddleware).forRoutes('*');
   }
 }

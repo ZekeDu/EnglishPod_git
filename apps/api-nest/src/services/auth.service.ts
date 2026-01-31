@@ -5,17 +5,6 @@ import { Prisma, User, UserSession } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import { parseCookies } from '../utils/auth';
 
-const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'sid';
-const SESSION_DAYS = Number(process.env.SESSION_DAYS || 7);
-const LOGIN_WINDOW_MS = Number(process.env.AUTH_LOGIN_WINDOW_MS || 10 * 60 * 1000);
-const LOGIN_MAX_FAILURES = Number(process.env.AUTH_LOGIN_MAX_FAILURES || 5);
-const CAPTCHA_TTL_MS = Number(process.env.AUTH_CAPTCHA_TTL_MS || 2 * 60 * 1000);
-const CAPTCHA_LENGTH = Math.max(4, Number(process.env.AUTH_CAPTCHA_LENGTH || 5));
-const CAPTCHA_MAX_ATTEMPTS = Number(process.env.AUTH_CAPTCHA_MAX_ATTEMPTS || 3);
-const RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60 * 1000);
-const RATE_LIMIT_LOGIN_MAX = Number(process.env.AUTH_RATE_LIMIT_LOGIN_MAX || 30);
-const RATE_LIMIT_SIGNUP_MAX = Number(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX || 10);
-
 export interface SessionMetadata {
   ip?: string | null;
   userAgent?: string | null;
@@ -28,6 +17,50 @@ export class AuthService {
   private rateLimitBuckets = new Map<string, { count: number; reset: number }>();
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private get sessionCookieName() {
+    return process.env.SESSION_COOKIE_NAME || 'sid';
+  }
+
+  private get sessionDays() {
+    return Number(process.env.SESSION_DAYS || 7);
+  }
+
+  private get loginWindowMs() {
+    return Number(process.env.AUTH_LOGIN_WINDOW_MS || 10 * 60 * 1000);
+  }
+
+  private get loginMaxFailures() {
+    return Number(process.env.AUTH_LOGIN_MAX_FAILURES || 5);
+  }
+
+  private get captchaTtlMs() {
+    return Number(process.env.AUTH_CAPTCHA_TTL_MS || 2 * 60 * 1000);
+  }
+
+  private get captchaLength() {
+    return Math.max(4, Number(process.env.AUTH_CAPTCHA_LENGTH || 5));
+  }
+
+  private get captchaMaxAttempts() {
+    return Number(process.env.AUTH_CAPTCHA_MAX_ATTEMPTS || 3);
+  }
+
+  private get rateLimitWindowMs() {
+    return Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60 * 1000);
+  }
+
+  private get rateLimitLoginMax() {
+    return Number(process.env.AUTH_RATE_LIMIT_LOGIN_MAX || 30);
+  }
+
+  private get rateLimitSignupMax() {
+    return Number(process.env.AUTH_RATE_LIMIT_SIGNUP_MAX || 10);
+  }
+
+  private hashSessionToken(token: string) {
+    return `sha256:${createHash('sha256').update(token).digest('hex')}`;
+  }
 
   normalizeUsername(input: string) {
     return input.trim().toLowerCase();
@@ -49,7 +82,7 @@ export class AuthService {
   }
 
   private sessionExpiry(): Date {
-    return new Date(Date.now() + SESSION_DAYS * 86400000);
+    return new Date(Date.now() + this.sessionDays * 86400000);
   }
 
   private generateSessionToken() {
@@ -58,11 +91,12 @@ export class AuthService {
 
   async createSession(userId: string, meta: SessionMetadata = {}) {
     const token = this.generateSessionToken();
+    const stored = this.hashSessionToken(token);
     const expires_at = this.sessionExpiry();
     await this.prisma.userSession.create({
       data: {
         user_id: userId,
-        session_token: token,
+        session_token: stored,
         expires_at,
         ip: meta.ip || null,
         user_agent: meta.userAgent || null,
@@ -74,8 +108,9 @@ export class AuthService {
   async revokeSession(token: string) {
     if (!token) return;
     const now = new Date();
+    const stored = this.hashSessionToken(token);
     await this.prisma.userSession.updateMany({
-      where: { session_token: token },
+      where: { OR: [{ session_token: token }, { session_token: stored }] },
       data: { revoked_at: now, expires_at: now },
     });
   }
@@ -90,21 +125,33 @@ export class AuthService {
 
   extractSessionToken(req: Request) {
     const cookies = parseCookies(req);
-    const sid = cookies[SESSION_COOKIE_NAME];
+    const sid = cookies[this.sessionCookieName];
     return sid || null;
   }
 
   async getActiveSession(token: string): Promise<SessionWithUser | null> {
     if (!token) return null;
+    const stored = this.hashSessionToken(token);
     const session = await this.prisma.userSession.findFirst({
       where: {
-        session_token: token,
+        OR: [{ session_token: token }, { session_token: stored }],
         revoked_at: null,
         expires_at: { gt: new Date() },
       },
       include: { user: true },
     });
     if (!session) return null;
+    // Opportunistically migrate legacy plaintext tokens to hashed-at-rest.
+    if (session.session_token === token) {
+      try {
+        await this.prisma.userSession.update({
+          where: { id: session.id },
+          data: { session_token: stored },
+        });
+      } catch {
+        // ignore migration failure
+      }
+    }
     return session;
   }
 
@@ -132,21 +179,25 @@ export class AuthService {
   }
 
   setSessionCookie(res: Response, token: string, expires: Date) {
-    const secure = /^production$/i.test(process.env.NODE_ENV || '');
-    res.cookie(SESSION_COOKIE_NAME, token, {
+    const secure = /^true$/i.test(process.env.COOKIE_SECURE || '') || /^production$/i.test(process.env.NODE_ENV || '');
+    const maxAge = Math.max(0, expires.getTime() - Date.now());
+    res.cookie(this.sessionCookieName, token, {
       httpOnly: true,
       sameSite: 'lax',
       secure,
       expires,
+      maxAge,
+      path: '/',
     });
   }
 
   clearSessionCookie(res: Response) {
-    const secure = /^production$/i.test(process.env.NODE_ENV || '');
-    res.clearCookie(SESSION_COOKIE_NAME, {
+    const secure = /^true$/i.test(process.env.COOKIE_SECURE || '') || /^production$/i.test(process.env.NODE_ENV || '');
+    res.clearCookie(this.sessionCookieName, {
       httpOnly: true,
       sameSite: 'lax',
       secure,
+      path: '/',
     });
   }
 
@@ -155,7 +206,7 @@ export class AuthService {
     const now = Date.now();
     const bucket = this.rateLimitBuckets.get(bucketKey);
     if (!bucket || bucket.reset <= now) {
-      this.rateLimitBuckets.set(bucketKey, { count: 1, reset: now + RATE_LIMIT_WINDOW_MS });
+      this.rateLimitBuckets.set(bucketKey, { count: 1, reset: now + this.rateLimitWindowMs });
       return true;
     }
     if (bucket.count >= limit) return false;
@@ -168,12 +219,12 @@ export class AuthService {
     if (ip) keyParts.push(`ip:${ip}`);
     if (username) keyParts.push(`user:${this.normalizeUsername(username)}`);
     const key = keyParts.join('|');
-    return this.consumeRateLimit(key, RATE_LIMIT_LOGIN_MAX);
+    return this.consumeRateLimit(key, this.rateLimitLoginMax);
   }
 
   enforceSignupRateLimit(ip: string | undefined | null) {
     const key = `signup|ip:${ip || 'unknown'}`;
-    return this.consumeRateLimit(key, RATE_LIMIT_SIGNUP_MAX);
+    return this.consumeRateLimit(key, this.rateLimitSignupMax);
   }
 
   async recordLoginAttempt(params: { username?: string | null; success: boolean; ip?: string | null; userId?: string | null }) {
@@ -189,7 +240,7 @@ export class AuthService {
   }
 
   async recentFailedAttempts(username?: string | null, ip?: string | null) {
-    const since = new Date(Date.now() - LOGIN_WINDOW_MS);
+    const since = new Date(Date.now() - this.loginWindowMs);
     return this.prisma.loginAttempt.count({
       where: {
         created_at: { gte: since },
@@ -205,7 +256,7 @@ export class AuthService {
   async shouldRequireCaptcha(username?: string | null, ip?: string | null) {
     if (!username && !ip) return false;
     const failures = await this.recentFailedAttempts(username, ip);
-    return failures >= LOGIN_MAX_FAILURES;
+    return failures >= this.loginMaxFailures;
   }
 
   private captchaHash(answer: string) {
@@ -215,7 +266,7 @@ export class AuthService {
   private generateCaptchaText() {
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let out = '';
-    for (let i = 0; i < CAPTCHA_LENGTH; i += 1) {
+    for (let i = 0; i < this.captchaLength; i += 1) {
       const idx = Math.floor(Math.random() * alphabet.length);
       out += alphabet[idx];
     }
@@ -234,7 +285,7 @@ export class AuthService {
       return `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${stroke}" stroke-width="1"/>`;
     }).join('');
     const chars = text.split('').map((ch, idx) => {
-      const x = 15 + idx * (width / CAPTCHA_LENGTH);
+      const x = 15 + idx * (width / this.captchaLength);
       const y = 20 + (Math.random() * 10 - 5);
       const rotate = Math.random() * 30 - 15;
       return `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-size="24" transform="rotate(${rotate.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)})">${ch}</text>`;
@@ -248,7 +299,7 @@ export class AuthService {
     });
     const answer = this.generateCaptchaText();
     const token = randomBytes(16).toString('hex');
-    const expires_at = new Date(Date.now() + CAPTCHA_TTL_MS);
+    const expires_at = new Date(Date.now() + this.captchaTtlMs);
     await this.prisma.captchaChallenge.create({
       data: {
         token,
@@ -277,7 +328,7 @@ export class AuthService {
       return true;
     }
     const attempts = challenge.attempts + 1;
-    if (attempts >= CAPTCHA_MAX_ATTEMPTS) {
+    if (attempts >= this.captchaMaxAttempts) {
       await this.prisma.captchaChallenge.delete({ where: { token } });
     } else {
       await this.prisma.captchaChallenge.update({

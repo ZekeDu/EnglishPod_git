@@ -1,14 +1,32 @@
-import { Body, Controller, Get, Post, Put, Query, Req, Res, Param, All } from '@nestjs/common';
+import { Controller, Get, Query, Req, Res, Param, All, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DATA_DIR } from '../utils/data';
 import * as crypto from 'crypto';
 import { PrismaService } from '../services/prisma.service';
+import { AdminGuard } from '../guards/admin.guard';
+import { safeJoinPath } from '../utils/safe-path';
 
 function ensureDir(p: string) { fs.mkdirSync(p, { recursive: true }); }
 function randomId() { return `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`; }
 
+const ALLOWED_EXTS = new Set(['webm', 'wav', 'mp3', 'm4a', 'ogg', 'txt']);
+
+function normalizeExt(input: string) {
+  const raw = String(input || '').trim().toLowerCase().replace(/^\./, '');
+  const clean = raw.replace(/[^a-z0-9]/g, '');
+  if (!clean) return null;
+  if (!ALLOWED_EXTS.has(clean)) return null;
+  return clean;
+}
+
+function sanitizeOriginalName(input: string) {
+  const s = String(input || '').replace(/\0/g, '').replace(/[\\/]/g, '_').trim();
+  return s.length > 200 ? s.slice(0, 200) : s;
+}
+
+@UseGuards(AdminGuard)
 @Controller('upload')
 export class UploadController {
   constructor(private readonly prisma: PrismaService) {}
@@ -17,21 +35,20 @@ export class UploadController {
   presign(@Query('ext') ext = 'webm') {
     const s3 = getS3Config();
     const day = new Date().toISOString().slice(0, 10);
-    const key = `lesson-uploads/${day}/${randomId()}.${ext.replace(/[^a-z0-9]/gi, '')}`;
+    const normalizedExt = normalizeExt(ext) || 'webm';
+    const key = `lesson-uploads/${day}/${randomId()}.${normalizedExt}`;
     if (s3) {
       const url = presignS3Put({ ...s3, key, expires: 600 });
       return { code: 200, message: 'ok', data: { method: 'PUT', url, headers: { 'Content-Type': 'application/octet-stream' }, key, finalUrl: url.split('?')[0] } };
     }
-    const token = randomId();
     return {
       code: 200,
       message: 'ok',
       data: {
         method: 'PUT',
-        url: `/upload/put?key=${encodeURIComponent(key)}&token=${encodeURIComponent(token)}`,
+        url: `/upload/put?key=${encodeURIComponent(key)}`,
         headers: { 'Content-Type': 'application/octet-stream' },
         key,
-        token,
         finalUrl: `local:uploads/${key}`
       }
     };
@@ -44,15 +61,13 @@ export class UploadController {
       if (!['PUT','POST'].includes(String(req.method || '').toUpperCase())) {
         return res.status(405).json({ code: 405, message: 'error', data: { error: 'method not allowed' } });
       }
-      const key = String(req.query.key || '').replace(/\.\.+/g, '.');
+      const key = String(req.query.key || '').trim();
       if (!key) return res.status(400).json({ code: 400, message: 'error', data: { error: 'key required' } });
-      // 可选的简易 token 校验（存在即通过，避免被误触发）
-      if (!req.query.token) return res.status(400).json({ code: 400, message: 'error', data: { error: 'token required' } });
       // 限定存储路径前缀
       if (!/^lesson-uploads\//.test(key)) return res.status(400).json({ code: 400, message: 'error', data: { error: 'invalid key' } });
-      const dir = path.join(DATA_DIR, 'uploads', path.dirname(key));
-      ensureDir(dir);
-      const filePath = path.join(DATA_DIR, 'uploads', key);
+      const baseUploads = path.join(DATA_DIR, 'uploads');
+      const filePath = safeJoinPath(baseUploads, key);
+      ensureDir(path.dirname(filePath));
       const ws = fs.createWriteStream(filePath);
       const max = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024); // 10MB 默认
       let size = 0;
@@ -70,9 +85,9 @@ export class UploadController {
         ws.on('error', reject);
       });
       // 简单 MIME 校验：根据扩展名做白名单（可扩展为 magic 检测）
-      const allowed = ['.webm','.wav','.mp3','.m4a','.ogg','.txt'];
       const ext = path.extname(filePath).toLowerCase();
-      if (!allowed.includes(ext)) {
+      const extClean = ext.replace(/^\./, '');
+      if (!normalizeExt(extClean)) {
         try { fs.unlinkSync(filePath); } catch {}
         return res.status(415).json({ code: 415, message: 'error', data: { error: 'unsupported media type' } });
       }
@@ -90,7 +105,7 @@ export class UploadController {
           '.txt': 'text/plain',
         } as Record<string, string>
       )[ext] || 'application/octet-stream';
-      const originalName = String(req.headers['x-original-name'] || path.basename(filePath));
+      const originalName = sanitizeOriginalName(String(req.headers['x-original-name'] || path.basename(filePath)));
       await this.prisma.upload.upsert({
         where: { key },
         update: { size, mime, original_name: originalName },
@@ -107,8 +122,8 @@ export class UploadController {
   @Get('file/:key(*)')
   async file(@Param('key') key: string, @Res() res: Response) {
     try {
-      const safeKey = String(key || '').replace(/\.\.+/g, '.');
-      const filePath = path.join(DATA_DIR, 'uploads', safeKey);
+      const baseUploads = path.join(DATA_DIR, 'uploads');
+      const filePath = safeJoinPath(baseUploads, String(key || ''));
       if (!fs.existsSync(filePath)) return res.status(404).end();
       const ext = path.extname(filePath).toLowerCase();
       const mime = ({

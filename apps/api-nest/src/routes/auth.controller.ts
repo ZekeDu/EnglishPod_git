@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service';
 import { PrismaService } from '../services/prisma.service';
 import { getUserFromRequest, hashPassword, verifyPassword, validatePasswordStrength } from '../utils/auth';
+import * as crypto from 'crypto';
 
 function pickUsername(body: any) {
   const username = String(body?.username ?? '').trim();
@@ -121,5 +122,14 @@ export class AuthController {
         expires_at: challenge.expires_at.toISOString(),
       },
     });
+  }
+
+  @Get('auth/csrf')
+  async csrf(@Req() req: Request, @Res() res: Response) {
+    const token = this.authService.extractSessionToken(req);
+    if (!token) return res.json({ code: 200, message: 'ok', data: { token: null } });
+    const secret = String(process.env.SESSION_SECRET || process.env.CSRF_SECRET || '');
+    const csrf = crypto.createHmac('sha256', secret || 'dev').update(`csrf:${token}`).digest('hex');
+    return res.json({ code: 200, message: 'ok', data: { token: csrf } });
   }
 }

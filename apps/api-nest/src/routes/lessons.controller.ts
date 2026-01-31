@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { Request, Response } from 'express';
@@ -6,6 +6,7 @@ import { LessonAudioService } from '../services/lesson-audio.service';
 import { LessonService } from '../services/lesson.service';
 import { DATA_DIR } from '../utils/data';
 import { AuthService } from '../services/auth.service';
+import { AdminGuard } from '../guards/admin.guard';
 
 export const FREE_LESSON_IDS = new Set(
   Array.from({ length: 10 }, (_, i) => String(i + 1).padStart(3, '0')),
@@ -164,6 +165,7 @@ export class LessonsController {
 
   // Dev-only: replace transcript segments (for alignment tool)
   @Put(':id/transcript')
+  @UseGuards(AdminGuard)
   updateTranscript(@Param('id') id: string, @Body() body: any) {
     const segments = body?.segments;
     if (!Array.isArray(segments)) return { code: 400, message: 'error', data: { error: 'segments required' } };

@@ -5,9 +5,18 @@ const path = require('path');
 const { scorePronunciation } = require('./src/lib/score');
 
 const DATA_DIR = path.join(process.cwd(), 'data');
+const WEB_ROOT = path.join(process.cwd(), 'apps', 'web');
+
+function buildAllowedOrigins() {
+  const extra = String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return new Set(['http://localhost:3000', 'http://127.0.0.1:3000', ...extra]);
+}
 
 function sendJson(res, status, data) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ code: status, message: status === 200 ? 'ok' : 'error', data }));
 }
 
@@ -28,8 +37,13 @@ const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET';
   const segments = (parsed.pathname || '/').split('/').filter(Boolean);
 
-  // CORS for local testing
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // CORS for local testing (restrict, avoid wildcard)
+  const allowed = buildAllowedOrigins();
+  const origin = req.headers.origin;
+  if (origin && allowed.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (method === 'OPTIONS') {
@@ -39,11 +53,13 @@ const server = http.createServer(async (req, res) => {
 
   // Static files from apps/web (Stage 1 Web prototype)
   if (method === 'GET' && (segments.length === 0 || segments[0] === 'web')) {
-    const webRoot = path.join(process.cwd(), 'apps', 'web');
-    let filePath = webRoot;
-    if (segments.length === 0) filePath = path.join(webRoot, 'index.html');
-    else if (segments.length >= 1) filePath = path.join(webRoot, ...segments.slice(1));
+    const rel = segments.length === 0 ? 'index.html' : segments.slice(1).join('/');
+    const normalized = path.posix.normalize('/' + rel).replace(/^\/+/, '');
+    let filePath = path.join(WEB_ROOT, normalized);
     try {
+      const root = path.resolve(WEB_ROOT) + path.sep;
+      const resolved = path.resolve(filePath);
+      if (!resolved.startsWith(root)) throw new Error('invalid path');
       const stat = fs.statSync(filePath);
       if (stat.isDirectory()) filePath = path.join(filePath, 'index.html');
       const ext = path.extname(filePath).toLowerCase();
@@ -69,6 +85,7 @@ const server = http.createServer(async (req, res) => {
   // GET /lessons/:id
   if (method === 'GET' && segments.length === 2 && segments[0] === 'lessons') {
     const id = segments[1];
+    if (!/^\d+$/.test(String(id || ''))) return sendJson(res, 400, { error: 'Invalid lesson id' });
     const metaPath = path.join(DATA_DIR, 'lessons', id, 'meta.json');
     const meta = readJSONSafe(metaPath);
     if (!meta) return sendJson(res, 404, { error: 'Lesson not found' });
@@ -78,6 +95,7 @@ const server = http.createServer(async (req, res) => {
   // GET /lessons/:id/transcript
   if (method === 'GET' && segments.length === 3 && segments[0] === 'lessons' && segments[2] === 'transcript') {
     const id = segments[1];
+    if (!/^\d+$/.test(String(id || ''))) return sendJson(res, 400, { error: 'Invalid lesson id' });
     const tranPath = path.join(DATA_DIR, 'lessons', id, 'transcript.json');
     const transcript = readJSONSafe(tranPath);
     if (!transcript) return sendJson(res, 404, { error: 'Transcript not found' });
@@ -88,7 +106,8 @@ const server = http.createServer(async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+const HOST = process.env.HOST || '127.0.0.1';
+server.listen(PORT, HOST, () => {
   // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${PORT}`);
+  console.log(`API listening on http://${HOST}:${PORT}`);
 });

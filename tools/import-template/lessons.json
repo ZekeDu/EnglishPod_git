@@ -1,0 +1,56 @@
+{
+  "version": "1.2",
+  "lessons": [
+    {
+      "id": "1",
+      "meta": {
+        "title": "Difficult Customer",
+        "level": "Elementary",
+        "tags": ["restaurant", "dialogue", "grab"],
+        "duration": 61,
+        "published": true,
+        "audio": { "file": "1_main.mp3" }
+      },
+      "transcript": {
+        "segments": [
+          { "idx": 0, "start_sec": 8.67, "end_sec": 15.11, "text_en": "A: Good evening. My name is Fabio, I’ll be your waiter for tonight. May I take your order?" },
+          { "idx": 1, "start_sec": 15.3, "end_sec": 20.5, "text_en": "B: No, I’m still working on it. This menu is not even in English. What’s good here?" },
+          { "idx": 2, "start_sec": 21.11, "end_sec": 25.82, "text_en": "A: For you sir, I would recommend spaghetti and meatballs." }
+        ]
+      },
+      "vocab": {
+        "cards": [
+          { "id": "1-0", "word": "still working on", "pos": "Phrase", "meaning": "not yet completed, need more time" },
+          { "id": "1-1", "word": "complimentary", "pos": "Adjective", "meaning": "free" },
+          { "id": "1-2", "word": "go with", "pos": "Phrase", "meaning": "to choose, pick" }
+        ]
+      },
+      "practice": {
+        "cloze": {
+          "passage": "Good evening. My name is Fabio, I’ll be your waiter for tonight. May I {1} your order? ... I’ll just {5} a burger across the street.",
+          "items": [
+            { "index": 1, "options": ["take", "go with", "grab", "recommend"], "answer": "take", "analysis": "take your order=点餐" },
+            { "index": 2, "options": ["go with", "recommend", "grab", "waitress"], "answer": "recommend", "analysis": "would recommend=推荐" },
+            { "index": 3, "options": ["complimentary", "impatient", "casual", "fancy"], "answer": "complimentary", "analysis": "complimentary=免费的" }
+          ]
+        },
+        "essay": {
+          "prompt": "Describe a difficult customer experience at a restaurant and how the staff should handle it.",
+          "min_words": 30,
+          "max_words": 200,
+          "rubric": { "spelling": 1, "grammar": 1, "clarity": 1 }
+        }
+      },
+      "podcast": {
+        "meta": { "duration": 600 },
+        "audio": { "file": "1_podcast.mp3" },
+        "transcript": {
+          "dialogue": [
+            { "idx": 0, "speaker": "Host", "text": "Welcome back to EnglishPod 365!" },
+            { "idx": 1, "speaker": "Co-host", "text": "Today we’re talking about difficult customers." }
+          ]
+        }
+      }
+    }
+  ]
+}
