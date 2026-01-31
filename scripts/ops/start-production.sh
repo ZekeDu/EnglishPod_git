@@ -7,6 +7,13 @@ WEB_PORT=${WEB_PORT:-3000}
 
 cd "$ROOT"
 
+if [[ -f ".env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ".env"
+  set +a
+fi
+
 if [[ ! -d "apps/api-nest/dist" || ! -d "apps/web-next/.next" ]]; then
   echo "未找到构建产物，请先运行 scripts/ops/deploy-production.sh" >&2
   exit 1

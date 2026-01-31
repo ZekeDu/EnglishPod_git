@@ -51,6 +51,11 @@ English Pod 365 面向英语学习场景，提供以下核心能力：
   npm install
   ```
 
+- 生成 Prisma Client（首次运行建议执行；`npm run dev:api` 会自动执行一次）：
+  ```
+  npm run prisma:generate
+  ```
+
 - 启动后端（Nest，默认 4000 起，自动占用空闲端口）：
   ```
   npm run dev:api
@@ -65,7 +70,18 @@ English Pod 365 面向英语学习场景，提供以下核心能力：
   - Web：`http://localhost:3000`
   - API：`http://localhost:4000/lessons`
 
-提示：环境变量示例见 `.env.example`，可复制为 `.env` 并按需修改。
+提示：环境变量示例见 `.env.example`，可复制为 `.env` 并按需修改。  
+注意：`NEXT_PUBLIC_API_BASE` 是前端 **构建期** 变量（生产改动后需要重新构建前端）。
+
+### 本地启动排障（常见报错）
+
+- `Environment variable not found: DATABASE_URL`：确认仓库根目录 `.env` 里有 `DATABASE_URL=...`，且本地 Postgres 可连通。
+- `@prisma/client did not initialize yet`：先跑 `npm run prisma:generate`（`npm run dev:api` 会自动执行）；如依旧失败，删除 `node_modules/@prisma` 后重装依赖再试。
+- 访问写接口返回 `403 csrf_*`：
+  - 浏览器：确认当前访问域名在允许列表（`CORS_ORIGINS` 或默认 `http://localhost:3000`）。
+  - 脚本/curl：无 `Origin` 头但携带 Cookie 时，需要加 `X-CSRF-Token`（可通过 `GET /auth/csrf` 获取）。
+- 管理端上传/导入返回 403：`/upload/*` 仅管理员可用，先用首个账号注册登录（默认成为 `admin`）。
+- 登录后 Cookie 不生效：本地 HTTP 环境不要设置 `NODE_ENV=production`/`COOKIE_SECURE=true`（否则 Secure Cookie 不会被浏览器发送）。
 
 ### 运维常用脚本
 
@@ -96,6 +112,8 @@ scripts/ops/start-production.sh
 - `PORT`：API 端口（默认 4000，可顺延占用 4001/4002）
 - `NEXT_PUBLIC_API_BASE`：前端请求后端地址，开发态默认 `http://localhost:4000`
 - `DATA_DIR`：数据根目录；默认仓库下 `data/`，建议使用绝对路径以避免 IDE/脚本工作目录差异
+- `DATABASE_URL`：Postgres 连接串（必填）
+- `SESSION_SECRET`：会话/CSRF 密钥（生产必填；开发建议设置一个非空值）
 - （可选）S3/MinIO：若需在生产保留历史录音或集中存储音频，可配置 `S3_*` 变量；默认使用本地文件即可。
 
 保存 `.env` 后重新启动服务生效。
@@ -193,9 +211,11 @@ scripts/ops/start-production.sh
 - 验证码：连续 5 次失败（10 分钟窗口，按用户/IP）后需要在登录体内携带 `captchaToken` + `captcha`，可通过 `GET /auth/captcha` 获取 base64 SVG。
 - 账户页：`/account`（查看角色、模拟订阅入口），订阅状态写入 `user_subscriptions`。
 - 管理端守卫：所有 `/admin/*` 需管理员角色。
-- 可选环境变量：`SESSION_COOKIE_NAME`（默认 `sid`）、`AUTH_LOGIN_MAX_FAILURES`（默认 5）、`AUTH_LOGIN_WINDOW_MS`（默认 10 分钟）、`AUTH_CAPTCHA_TTL_MS`（默认 120 秒）可调整策略。
+- 上传与预签名：`/upload/*` 仅管理员可用（用于管理端上传音频/导入等场景）。
+- CSRF：浏览器请求会校验 `Origin` 是否在允许列表；脚本/运维工具（无 `Origin`）若携带 Cookie，需要加 `X-CSRF-Token`（可通过 `GET /auth/csrf` 获取）。
+- 可选环境变量：`SESSION_COOKIE_NAME`（默认 `sid`）、`SESSION_SECRET`（生产必填）、`TRUST_PROXY`、`COOKIE_SECURE`、`CORS_ORIGINS`、`AUTH_LOGIN_MAX_FAILURES`、`AUTH_LOGIN_WINDOW_MS`、`AUTH_CAPTCHA_TTL_MS` 可调整策略。
 
-生产建议：Cookie+Session（Redis）+ CSRF、防爆破限流、邮箱或短信验证、密码重置、操作审计。
+生产建议：启用 HTTPS + Secure Cookie、配置 `CORS_ORIGINS`、设置 `SESSION_SECRET`、接入全局限流/WAF、提供邮箱/短信验证与密码重置、完善操作审计与备份。
 
 ---
 
@@ -260,7 +280,7 @@ scripts/ops/start-production.sh
 
 - 导入校验：`node packages/scripts/import-lessons.js`（打印每课错误报告；含测试 `packages/scripts/tests/import-lessons.test.js`）
 - 直传自检：`API_BASE=http://localhost:4000 npm run check:upload`
-  - 请求 `/upload/presign` → 直传小文本 → 输出 `{ ok, key, finalUrl, method, uploadUrl }`
+  - 说明：`/upload/presign` 仅管理员可用，脚本需要携带登录后的 Cookie（见 `packages/scripts/check-upload.js`）
 - API 集成测试（本地）：`node tests/api.integration.js`
 - 备份脚本：`DATABASE_URL=... DATA_DIR=... tools/db/backup.sh ./backups`（输出 pg_dump + 音频/缓存压缩包）
 - 旧版音频映射迁移：`node tools/migrate-lesson-audio.js`

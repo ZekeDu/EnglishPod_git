@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "prestart:dev": "npm run prisma:generate",
     "start:dev": "ts-node --transpile-only src/main.ts",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma"
   },

@@ -4,6 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+if [[ -f ".env" ]]; then
+  # Load env for prisma migrate and Next build-time NEXT_PUBLIC_* variables.
+  set -a
+  # shellcheck disable=SC1091
+  source ".env"
+  set +a
+fi
+
 echo ">> 安装依赖（仅第一次或依赖更新时需要）"
 npm install --production=false
 

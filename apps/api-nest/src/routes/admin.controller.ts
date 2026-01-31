@@ -526,8 +526,18 @@ export class AdminController {
       const overwriteSet = new Set(overwriteAll ? ['meta','transcript','vocab','practice','podcast'] : overwriteParam.split(',').map(s=>s.trim()).filter(Boolean));
 
       const chunks: Buffer[] = [];
+      const maxBytes = Number(process.env.ADMIN_IMPORT_MAX_BYTES || 25 * 1024 * 1024);
+      let totalBytes = 0;
       await new Promise<void>((resolve, reject) => {
-        req.on('data', (c) => chunks.push(Buffer.from(c)));
+        req.on('data', (c) => {
+          const b = Buffer.from(c);
+          totalBytes += b.length;
+          if (totalBytes > maxBytes) {
+            try { (req as any).destroy(); } catch {}
+            return reject(new Error('Payload Too Large'));
+          }
+          chunks.push(b);
+        });
         req.on('end', () => resolve());
         req.on('error', reject);
       });
@@ -676,6 +686,9 @@ export class AdminController {
       }
       return { code: 200, message: 'ok', data: report };
     } catch (e:any) {
+      if (String(e?.message || '') === 'Payload Too Large') {
+        return { code: 413, message: 'error', data: { error: 'payload_too_large' } };
+      }
       return { code: 500, message: 'error', data: { error: 'import failed' } };
     }
   }

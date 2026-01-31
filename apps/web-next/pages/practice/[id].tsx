@@ -78,28 +78,6 @@ export default function PracticePage() {
     })();
   }, [id]);
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const target = e.target as HTMLSelectElement;
-      if (target && target.tagName === 'SELECT' && target.dataset.idx) {
-        const idx = Number(target.dataset.idx);
-        setAnswers((prev) => ({ ...prev, [idx]: target.value }));
-      }
-    };
-    document.addEventListener('change', handler);
-    return () => document.removeEventListener('change', handler);
-  }, []);
-
-  const collectCurrentAnswers = () => {
-    const selects = Array.from(document.querySelectorAll<HTMLSelectElement>('.cloze-select'));
-    return selects
-      .map((select) => ({
-        index: Number(select.dataset.idx),
-        value: select.value,
-      }))
-      .filter((entry) => Number.isFinite(entry.index));
-  };
-
   const applyLatestState = (latest: LatestState) => {
     if (latest?.cloze) {
       const mapped: Record<number, string> = {};
@@ -143,28 +121,70 @@ export default function PracticePage() {
   };
 
   const renderedPassage = useMemo(() => {
-    if (!cloze) return '';
-    let text = cloze.passage;
+    if (!cloze) return null;
+    const items = new Map<number, { index: number; options: string[] }>();
     (cloze.items || []).forEach((item) => {
-      const selected = answers[item.index] || '';
-      const placeholder = `<option value="" disabled ${selected ? '' : 'selected'}>请选择</option>`;
-      const options = item.options
-        .map((opt) => `<option value="${opt}" ${opt === selected ? 'selected' : ''}>${opt}</option>`)
-        .join('');
-      const selectHtml = `<select data-idx="${item.index}" class="cloze-select">${selected ? '' : placeholder}${options}</select>`;
-      text = text.replace(new RegExp(`\\{${item.index}\\}`, 'g'), selectHtml);
+      if (typeof item?.index === 'number' && Array.isArray(item?.options)) {
+        items.set(item.index, { index: item.index, options: item.options.map((o) => String(o)) });
+      }
     });
-    return text;
+
+    const passage = String(cloze.passage || '');
+    const parts = passage.split(/(\{\d+\})/g);
+    const out: any[] = [];
+
+    const pushText = (text: string) => {
+      const lines = String(text).split('\n');
+      lines.forEach((line, idx) => {
+        if (line) out.push(line);
+        if (idx < lines.length - 1) out.push(<br key={`br-${out.length}`} />);
+      });
+    };
+
+    parts.forEach((part, idx) => {
+      const m = /^\{(\d+)\}$/.exec(part);
+      if (!m) {
+        pushText(part);
+        return;
+      }
+      const index = Number(m[1]);
+      const item = items.get(index);
+      if (!item) {
+        pushText(part);
+        return;
+      }
+      const selected = answers[index] || '';
+      out.push(
+        <select
+          key={`sel-${idx}-${index}`}
+          value={selected}
+          onChange={(e) => {
+            const value = e.currentTarget.value;
+            setAnswers((prev) => ({ ...prev, [index]: value }));
+          }}
+          aria-label={`第 ${index} 题`}
+        >
+          <option value="" disabled>
+            请选择
+          </option>
+          {item.options.map((opt, optIdx) => (
+            <option key={`${optIdx}-${opt}`} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>,
+      );
+    });
+
+    return out;
   }, [cloze, answers]);
 
   const submitCloze = async () => {
     setClozeError(null);
-    const current = collectCurrentAnswers();
-    const mapped: Record<number, string> = {};
-    current.forEach((entry) => {
-      mapped[entry.index] = entry.value;
-    });
-    if (current.length > 0) setAnswers(mapped);
+    if (!cloze) return;
+    const current = (cloze.items || [])
+      .filter((it) => typeof it?.index === 'number')
+      .map((it) => ({ index: it.index, value: answers[it.index] || '' }));
     const payload = { answers: current };
     try {
       const resp = await fetch(`${API}/practice/${id}/cloze/submit`, {
@@ -312,10 +332,7 @@ export default function PracticePage() {
         <>
           <Card>
             <h3 className={styles.subtitle}>请选择合适的答案补全文章</h3>
-            <div
-              className={styles.clozePassage}
-              dangerouslySetInnerHTML={{ __html: renderedPassage }}
-            />
+            <div className={styles.clozePassage}>{renderedPassage}</div>
           </Card>
           {clozeError && (
             <Card className={styles.notice}>

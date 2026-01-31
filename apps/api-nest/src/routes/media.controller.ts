@@ -6,10 +6,17 @@ import { LessonAudioService } from '../services/lesson-audio.service';
 import { DATA_DIR } from '../utils/data';
 import { AuthService } from '../services/auth.service';
 import { FREE_LESSON_IDS } from './lessons.controller';
+import { safeJoinPath } from '../utils/safe-path';
 
 function streamLocal(req: Request, res: Response, relKey: string) {
-  const safe = String(relKey || '').replace(/\.+/g, '.');
-  const filePath = path.join(DATA_DIR, 'uploads', safe);
+  const baseUploads = path.join(DATA_DIR, 'uploads');
+  let filePath: string;
+  try {
+    filePath = safeJoinPath(baseUploads, String(relKey || ''));
+  } catch {
+    res.status(400).end();
+    return;
+  }
   if (!fs.existsSync(filePath)) {
     res.status(404).end();
     return;

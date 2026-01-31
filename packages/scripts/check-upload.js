@@ -6,17 +6,27 @@
  * - 输出状态与关键参数（key/finalUrl）
  * 用法：
  *   API_BASE=http://localhost:4000 node packages/scripts/check-upload.js
+ *   API_BASE=http://localhost:4000 API_COOKIE="sid=...; other=..." node packages/scripts/check-upload.js
  */
 
 const API = process.env.API_BASE || 'http://localhost:4000';
+const API_COOKIE = process.env.API_COOKIE || '';
 
 async function main(){
-  const presign = await fetch(`${API}/upload/presign?ext=txt`).then(r=>r.json());
+  if (!API_COOKIE) {
+    throw new Error('缺少 API_COOKIE：/upload/presign 仅管理员可用，请先登录并提供 Cookie（例如 sid=...）');
+  }
+  const presign = await fetch(`${API}/upload/presign?ext=txt`, { headers: { Cookie: API_COOKIE } }).then(r=>r.json());
   if (!presign?.data?.url) throw new Error('presign 返回异常');
   const u = presign.data;
   const uploadUrl = /^https?:/i.test(u.url) ? u.url : `${API}${u.url}`;
   const method = (u.method||'PUT').toUpperCase();
-  const headers = u.headers || { 'Content-Type': 'application/octet-stream' };
+  const headers = { ...(u.headers || { 'Content-Type': 'application/octet-stream' }) };
+  const apiOrigin = new URL(API).origin;
+  const uploadOrigin = new URL(uploadUrl).origin;
+  if (uploadOrigin === apiOrigin) {
+    headers.Cookie = API_COOKIE;
+  }
   const payload = new TextEncoder().encode(`ep-check-upload ${new Date().toISOString()}\n`);
 
   const resp = await fetch(uploadUrl, { method, headers, body: payload });
@@ -32,4 +42,3 @@ async function main(){
 }
 
 main().catch(e => { console.error(e.message || e); process.exit(1); });
-

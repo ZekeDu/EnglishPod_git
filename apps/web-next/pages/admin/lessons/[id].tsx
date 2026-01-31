@@ -208,10 +208,20 @@ export default function AdminLessonEdit() {
                         if (!f) return;
                         try {
                           const ext = f.name.split('.').pop() || 'mp3';
-                          const presign = await fetch(`${API}/upload/presign?ext=${encodeURIComponent(ext)}`).then((r) => r.json());
+                          const presign = await fetch(`${API}/upload/presign?ext=${encodeURIComponent(ext)}`, {
+                            credentials: 'include',
+                          }).then((r) => r.json());
                           const u = presign.data;
                           const uploadUrl = /^https?:/i.test(u.url) ? u.url : `${API}${u.url}`;
-                          await fetch(uploadUrl, { method: u.method, headers: u.headers || {}, body: f });
+                          const apiOrigin = new URL(API).origin;
+                          const uploadOrigin = new URL(uploadUrl).origin;
+                          const uploadResp = await fetch(uploadUrl, {
+                            method: u.method,
+                            headers: u.headers || {},
+                            body: f,
+                            credentials: uploadOrigin === apiOrigin ? 'include' : 'omit',
+                          });
+                          if (!uploadResp.ok) throw new Error('upload failed');
                           let dur = 0;
                           try {
                             dur = await getAudioDuration(URL.createObjectURL(f));
@@ -416,10 +426,20 @@ export default function AdminLessonEdit() {
                         if (!f) return;
                         try {
                           const ext = f.name.split('.').pop() || 'mp3';
-                          const presign = await fetch(`${API}/upload/presign?ext=${encodeURIComponent(ext)}`).then((r) => r.json());
+                          const presign = await fetch(`${API}/upload/presign?ext=${encodeURIComponent(ext)}`, {
+                            credentials: 'include',
+                          }).then((r) => r.json());
                           const u = presign.data;
                           const uploadUrl = /^https?:/i.test(u.url) ? u.url : `${API}${u.url}`;
-                          await fetch(uploadUrl, { method: u.method, headers: u.headers || {}, body: f });
+                          const apiOrigin = new URL(API).origin;
+                          const uploadOrigin = new URL(uploadUrl).origin;
+                          const uploadResp = await fetch(uploadUrl, {
+                            method: u.method,
+                            headers: u.headers || {},
+                            body: f,
+                            credentials: uploadOrigin === apiOrigin ? 'include' : 'omit',
+                          });
+                          if (!uploadResp.ok) throw new Error('upload failed');
                           let dur = 0;
                           try {
                             dur = await getAudioDuration(URL.createObjectURL(f));

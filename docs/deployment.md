@@ -285,7 +285,7 @@ sudo apt install -y nodejs
 sudo mkdir -p /srv/englishpod/{src,data}
 sudo chown -R "$USER:$USER" /srv/englishpod
 
-sudo -u postgres psql -c "CREATE ROLE ep365 WITH LOGIN PASSWORD 'devpass';"
+sudo -u postgres psql -c "CREATE ROLE ep365 WITH LOGIN PASSWORD '<strong_password>';"
 sudo -u postgres psql -c "CREATE DATABASE englishpod OWNER ep365;"
 ```
 
@@ -306,15 +306,28 @@ npm install
 ### 第 4 步：配置 `.env`
 
 ```env
-DATABASE_URL=postgresql://ep365:devpass@127.0.0.1:5432/englishpod
+DATABASE_URL=postgresql://ep365:<strong_password>@127.0.0.1:5432/englishpod
 NEXT_PUBLIC_API_BASE=http://localhost:4000
 DATA_DIR=/srv/englishpod/data
 PORT=4000
+NODE_ENV=production
+# 生产必填：强随机字符串（用于 CSRF 校验等）
+SESSION_SECRET=<strong_random_secret>
+# 反向代理部署（推荐）
+TRUST_PROXY=1
+# HTTPS 部署（推荐）；生产默认会开启 Secure Cookie
+COOKIE_SECURE=true
+# 生产建议明确配置前端域名
+#CORS_ORIGINS=https://your-domain.com
+# 生产建议关闭 localhost 通配放行
+CORS_ALLOW_LOCALHOST_WILDCARD=false
 ```
 
 - 如果要在局域网给其他人访问，可把 `NEXT_PUBLIC_API_BASE` 换成 `http://<局域网IP>:4000`。
+- 如果是公网/HTTPS 部署：务必设置 `CORS_ORIGINS` 为前端域名，并使用反向代理（Nginx/Traefik）做 TLS 终止。
+- 如需调用带 Cookie 的写接口（脚本/运维工具，无 `Origin` 头）：需要带上 `X-CSRF-Token`（可通过 `GET /auth/csrf` 获取）。
 
-### 第 5 步：数据库迁移与构建
+### 第 5 步：数据库迁移与构建（重要：Next.js 使用构建期环境变量）
 
 ```bash
 npm run prisma:generate
@@ -323,6 +336,8 @@ scripts/ops/deploy-production.sh
 ```
 
 > **顺序原因**：先生成 Prisma Client，再执行迁移，最后构建，避免出现“表不存在”或“Client 缺失”。
+>
+> **注意**：前端使用的 `NEXT_PUBLIC_API_BASE` 是 **构建期注入**（不是运行期），如果你改了 `.env`，需要重新执行构建步骤后再启动。
 
 ### 第 6 步：启动服务
 
@@ -355,6 +370,8 @@ scripts/ops/backup-db.sh ./backups
 | Prisma 无法连接数据库 | 检查 PostgreSQL 是否启动：`sudo systemctl status postgresql`；用 `psql "$DATABASE_URL" -c 'SELECT 1'` 验证 |
 | 课程音频 404 | 确认音频被放在 `data/uploads/`，或在后台重新上传 |
 | TTS 播放失败 | 查看 `data/tts-cache/tts-errors.log`，在 `/admin/settings/models/tts` 重新配置密钥 |
+| 后台上传/导入提示 403 | `/upload/*` 仅管理员可用；并确认已登录且前端域名在 `CORS_ORIGINS` 中 |
+| 脚本调用写接口提示 csrf_* | 脚本请求通常无 `Origin`，携带 Cookie 时需加 `X-CSRF-Token`（`GET /auth/csrf` 获取） |
 
 ---
 

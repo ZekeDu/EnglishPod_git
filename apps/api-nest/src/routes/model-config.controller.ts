@@ -3,6 +3,20 @@ import type { Request } from 'express';
 import { getUserFromRequest } from '../utils/auth';
 import { AppSettingService } from '../services/app-setting.service';
 
+function normalizeLocalBase(input: string | undefined | null, fallback: string) {
+  const raw = String(input || '').trim();
+  if (!raw) return fallback;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return fallback;
+    const host = u.hostname.toLowerCase();
+    if (!['localhost', '127.0.0.1', '::1'].includes(host)) return fallback;
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return fallback;
+  }
+}
+
 type ModelsConfig = {
   tts: {
     enabled: boolean;
@@ -226,7 +240,11 @@ export class ModelConfigController {
   async listOllamaModels(@Req() req: Request) {
     if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const cfg = await this.loadConfig();
-    const base = (req.query.base as string) || (cfg.scoring.providers as any)?.ollama?.base || 'http://localhost:11434';
+    const cfgBase = (cfg.scoring.providers as any)?.ollama?.base || 'http://localhost:11434';
+    const base =
+      /^production$/i.test(process.env.NODE_ENV || '')
+        ? cfgBase
+        : normalizeLocalBase(req.query.base as string, cfgBase);
     try {
       const r = await fetch(`${base}/api/tags`);
       if (!r.ok) return { code: 502, message: 'error', data: { error: `HTTP ${r.status}`, base } };
@@ -242,10 +260,15 @@ export class ModelConfigController {
   async listAzureVoices(@Req() req: Request) {
     if (!this.isAdmin(req)) return { code: 403, message: 'error', data: { error: 'forbidden' } };
     const cfg = await this.loadConfig();
-    const region = (req.query.region as string) || (cfg.tts.providers as any)?.azure?.region;
-    const key = (req.query.key as string) || (cfg.tts.providers as any)?.azure?.key;
-    if (!region || !key) return { code: 400, message: 'error', data: { error: 'region/key required' } };
-    const base = `https://${region}.tts.speech.microsoft.com`;
+    const allowQuery = !/^production$/i.test(process.env.NODE_ENV || '');
+    const region = (allowQuery ? (req.query.region as string) : '') || (cfg.tts.providers as any)?.azure?.region;
+    const key = (allowQuery ? (req.query.key as string) : '') || (cfg.tts.providers as any)?.azure?.key;
+    const regionClean = String(region || '').trim().toLowerCase();
+    if (regionClean && !/^[a-z0-9-]{2,30}$/.test(regionClean)) {
+      return { code: 400, message: 'error', data: { error: 'invalid region' } };
+    }
+    if (!regionClean || !key) return { code: 400, message: 'error', data: { error: 'region/key required' } };
+    const base = `https://${regionClean}.tts.speech.microsoft.com`;
     try {
       const r = await fetch(`${base}/cognitiveservices/voices/list`, { headers: { 'Ocp-Apim-Subscription-Key': key } });
       if (!r.ok) return { code: 502, message: 'error', data: { error: `HTTP ${r.status}` } };

@@ -1,6 +1,5 @@
 # Node / package managers
 node_modules/
-package-lock.json
 pnpm-lock.yaml
 yarn.lock
 
@@ -71,7 +70,16 @@ docker-compose.override.yml
 *.iml
 
 # Tools
-tools/
+# The tools folder contains local generators and large assets; keep it ignored by default,
+# but allow a small set of operational scripts/config that are referenced by docs/runtime.
+tools/**
+!tools/minio/
+!tools/minio/cors.json
+!tools/db/
+!tools/db/backup.sh
+!tools/migrate-lesson-audio.js
+!tools/import-template/
+!tools/import-template/lessons.json
 
 
 #example
@@ -88,3 +96,7 @@ docs/import-format.md
 docs/deployment_old.md
 docs/repository-ignore.md
 docs/essay-feedback-design.md
+
+# Docs referenced by README/deployment should be versioned
+!docs/import-format.md
+!docs/repository-ignore.md
