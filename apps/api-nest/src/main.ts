@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './modules/app.module';
-import * as express from 'express';
+import express from 'express';
 import { buildAllowedOrigins, isOriginAllowed } from './config/origins';
 import { loadEnvFiles } from './config/env-file';
 // CORS is configured via app.enableCors below
