@@ -346,7 +346,36 @@ NEXT_PUBLIC_API_BASE=http://localhost:4000 scripts/ops/start-production.sh
 ```
 
 - 命令会在终端前台输出日志，按 `Ctrl+C` 可停止。
-- 若想后台运行，可安装 PM2：`npm install -g pm2`，再 `pm2 start scripts/ops/start-production.sh --name englishpod-local`。
+- 生产环境建议使用 PM2 / systemd 守护进程运行，避免 SSH 断开后服务退出。
+
+#### 使用 PM2 后台运行（推荐）
+
+> 已提供 PM2 配置：`ecosystem.config.js`（分别管理 API/Web）。
+
+1) 安装与启动
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js --env production
+pm2 status
+```
+
+2) 设置开机自启（按 PM2 输出提示执行）
+```bash
+pm2 startup
+pm2 save
+```
+
+3) 查看日志
+```bash
+pm2 logs englishpod-api
+pm2 logs englishpod-web
+```
+
+4) 代码更新后的重建与平滑重启
+```bash
+scripts/ops/deploy-production.sh
+pm2 reload ecosystem.config.js --env production --update-env
+```
 
 ### 第 7 步：访问服务
 
