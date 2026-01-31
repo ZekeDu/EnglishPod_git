@@ -95,6 +95,33 @@ English Pod 365 面向英语学习场景，提供以下核心能力：
 
 > 首次使用前记得赋予执行权限：`chmod +x scripts/ops/*.sh`
 
+### 生产推荐：PM2 后台运行
+
+`scripts/ops/start-production.sh` 是前台启动，SSH/终端关闭后进程会退出。生产环境建议使用 PM2 守护运行。
+
+仓库已提供：`ecosystem.config.js`（进程名：`englishpod-api`、`englishpod-web`）。
+
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js --env production
+pm2 status
+pm2 logs englishpod-web
+```
+
+开机自启：
+
+```bash
+pm2 startup
+pm2 save
+```
+
+更新代码后的流程：
+
+```bash
+scripts/ops/deploy-production.sh
+pm2 reload ecosystem.config.js --env production --update-env
+```
+
 使用示例：
 
 ```bash
