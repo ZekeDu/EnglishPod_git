@@ -100,3 +100,9 @@ docs/essay-feedback-design.md
 # Docs referenced by README/deployment should be versioned
 !docs/import-format.md
 !docs/repository-ignore.md
+
+#Others
+SECURITY_AUDIT.md
+/tests
+/docs
+!/docs/README.md
